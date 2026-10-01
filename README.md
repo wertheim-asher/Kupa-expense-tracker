@@ -21,6 +21,22 @@ To try it on a phone on the same Wi-Fi: `npm run dev -- --host`, then open the "
 
 Other scripts: `npm test` (unit and flow tests), `npm run build` (typecheck and production build), `npm run icons` (regenerate PWA icons).
 
+## Deploy
+
+The live site is the Netlify project `kupa-expense-tracker`, deployed with the Netlify CLI from a local build:
+
+```bash
+npx netlify-cli login
+npm run build
+npx netlify-cli deploy --prod --no-build --dir dist --site kupa-expense-tracker
+```
+
+Site settings already in place: site protection off (public), "Built with Netlify" badge off (it covered the keypad corner), manifest served as `application/manifest+json` (see `netlify.toml`).
+
+## Where things stand
+
+See the Timeline and Feedback tables in [BUILD_LOG.md](BUILD_LOG.md). In short: fast-lane steps 1 to 4 are done and verified on the live URL; step 5 (Asher tests on his phone) is open; Phase 3 (Supabase, partner sync) starts only if Asher writes "go sync".
+
 ## Manual device checklist
 
 - [ ] iPhone Safari: Share → Add to Home Screen, open from the icon, full core flow ("+", type 45, tap סופר, see the number drop). The keypad and "+" sit clear of the home indicator.
