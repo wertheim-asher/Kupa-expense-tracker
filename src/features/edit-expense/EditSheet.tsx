@@ -17,6 +17,8 @@ import { MemberChip } from '../../ui/MemberChip.tsx'
 import { Money } from '../../ui/Money.tsx'
 import { Sheet } from '../../ui/Sheet.tsx'
 import { useToast } from '../../ui/Toast.tsx'
+import { useOnline } from '../../ui/useOnline.ts'
+import { syncEnabled } from '../../data/supabase.ts'
 
 export function EditSheet() {
   const { id } = useParams()
@@ -70,7 +72,11 @@ function EditForm({
   /** Tells the parent this sheet is closing itself, so a vanished expense is not reported as deleted elsewhere. */
   setDone: (value: boolean) => void
 }) {
-  const { repo, run, highlight, members, household } = useReadyData()
+  const { repo, run, highlight, members, household, mode } = useReadyData()
+  const online = useOnline()
+  // With the shared backend, edits need the server: not while offline, not before the expense was sent.
+  const blocked: 'edit.pending' | 'edit.offline' | null =
+    syncEnabled && mode !== 'demo' ? (expense.pending ? 'edit.pending' : online ? null : 'edit.offline') : null
   const toast = useToast()
   // What the form opened with. Diffing against this (not the live expense) means a change
   // made in another tab to a field the user did not touch is never reverted.
@@ -190,6 +196,11 @@ function EditForm({
           </p>
         )}
 
+        {blocked && (
+          <p role="status" className="mt-3 rounded-2xl bg-warn-soft px-4 py-2 text-sm font-medium text-warn">
+            {t(blocked)}
+          </p>
+        )}
         {failed && (
           <p role="alert" className="mt-3 rounded-2xl bg-over-soft px-4 py-2 text-sm font-medium text-over">
             {t('error.save')}
@@ -214,10 +225,10 @@ function EditForm({
           </div>
         ) : (
           <div className="flex gap-2">
-            <Button variant="danger-ghost" onClick={() => setConfirming(true)} disabled={busy}>
+            <Button variant="danger-ghost" onClick={() => setConfirming(true)} disabled={busy || blocked !== null}>
               {t('edit.delete')}
             </Button>
-            <Button className="flex-1" onClick={() => void save()} disabled={busy || amount === null || !dateOk}>
+            <Button className="flex-1" onClick={() => void save()} disabled={busy || blocked !== null || amount === null || !dateOk}>
               {t('edit.save')}
             </Button>
           </div>

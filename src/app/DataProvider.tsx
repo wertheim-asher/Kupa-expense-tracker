@@ -142,6 +142,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     })
   }, [repo, load, highlight])
 
+  // Back online: reload (after the repo has had a moment to send what was saved offline).
+  useEffect(() => {
+    const onOnline = () => setTimeout(() => void load(), 800)
+    window.addEventListener('online', onOnline)
+    return () => window.removeEventListener('online', onOnline)
+  }, [load])
+
   // Heal on return to the app, and roll over at midnight (Israel time).
   useEffect(() => {
     const onVisible = () => {

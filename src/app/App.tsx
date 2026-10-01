@@ -12,6 +12,7 @@ import { Settings } from '../features/settings/Settings.tsx'
 import { syncEnabled } from '../data/supabase.ts'
 import { t } from '../i18n/index.ts'
 import { ToastProvider } from '../ui/Toast.tsx'
+import { useOnline } from '../ui/useOnline.ts'
 import { DataProvider, useData } from './DataProvider.tsx'
 import { ErrorBoundary, ErrorState } from './ErrorBoundary.tsx'
 import { ModeProvider, useMode } from './ModeContext.tsx'
@@ -35,12 +36,24 @@ function Root() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col pt-[env(safe-area-inset-top)]">
       {mode === 'demo' && <DemoBanner />}
+      {syncEnabled && mode !== 'demo' && <OfflineBanner />}
       <ErrorBoundary onReset={() => setResetKey((k) => k + 1)}>
         <DataProvider key={`${mode}-${resetKey}`}>
           <AppRoutes />
         </DataProvider>
       </ErrorBoundary>
     </div>
+  )
+}
+
+/** Shared backend only: on-device and demo modes work the same offline. */
+function OfflineBanner() {
+  const online = useOnline()
+  if (online) return null
+  return (
+    <p role="status" className="bg-text px-4 py-2 text-center text-sm font-medium text-white">
+      {t('offline.banner')}
+    </p>
   )
 }
 

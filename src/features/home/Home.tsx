@@ -1,4 +1,4 @@
-import { Plus, Settings as SettingsIcon, Wallet } from 'lucide-react'
+import { Clock, Plus, Settings as SettingsIcon, Wallet } from 'lucide-react'
 import { Link, Outlet, useMatch, useNavigate } from 'react-router'
 import { useReadyData } from '../../app/DataProvider.tsx'
 import { TIMING } from '../../config.ts'
@@ -172,6 +172,13 @@ function ExpenseList({
                   <MemberChip member={members.find((m) => m.id === e.memberId)} />
                   {/* Fixed-width amount slot keeps the member chips in one column across rows. */}
                   <span className="min-w-[6.5rem] shrink-0 text-end">
+                    {e.pending && (
+                      // Saved offline, waiting to be sent.
+                      <span className="me-1 inline-flex align-middle text-muted">
+                        <Clock size={14} aria-hidden="true" />
+                        <span className="sr-only">{t('home.pending')}</span>
+                      </span>
+                    )}
                     <Money agorot={e.amountAgorot} className="font-medium" />
                   </span>
                 </Link>

@@ -20,6 +20,7 @@ import type {
   Session,
 } from '../domain/types.ts'
 import { RepoError, type Repo, type RepoErrorCode } from './repo.ts'
+import { clearOffline, eventQueue, offlineCache, outbox, pendingExpense, type OutboxItem } from './offline.ts'
 import { checkAmount, checkCycleDay, checkNewExpense, checkPatch, cleanName } from './validate.ts'
 
 interface HouseholdRow {
@@ -106,6 +107,26 @@ function toRepoError(error: PostgrestError | Error | { message?: string; code?: 
 /** Events tracked before the household exists (app_open on the welcome screen) wait here. */
 const MAX_PENDING_EVENTS = 20
 
+/** Server answers that mean "never going to work" for a queued expense (checks, RLS, bad references). */
+const PERMANENT_ERRORS = new Set(['23502', '23503', '23514', '22P02', '42501'])
+
+const isOffline = () => typeof navigator !== 'undefined' && navigator.onLine === false
+
+const rangeKey = (range: { from: string; toExclusive: string }) => `${range.from}|${range.toExclusive}`
+
+const byNewest = (a: Expense, b: Expense) =>
+  a.spentOn === b.spentOn ? b.createdAt.localeCompare(a.createdAt) : b.spentOn.localeCompare(a.spentOn)
+
+const rowFor = (item: OutboxItem) => ({
+  id: item.input.id,
+  household_id: item.householdId,
+  member_id: item.memberId,
+  amount_agorot: item.input.amountAgorot,
+  category: item.input.category,
+  spent_on: item.input.spentOn,
+  log_duration_ms: item.input.logDurationMs,
+})
+
 export class SupabaseRepo implements Repo {
   private readonly sb: SupabaseClient
   private session: Session | null = null
@@ -115,9 +136,12 @@ export class SupabaseRepo implements Repo {
   private pendingEvents: Array<{ name: string; props: Record<string, unknown>; at: string }> = []
   private notifyTimer: ReturnType<typeof setTimeout> | null = null
   private subscribedOnce = false
+  private flushing: Promise<void> | null = null
 
   constructor(client: SupabaseClient) {
     this.sb = client
+    // Back online: send what was saved offline.
+    if (typeof window !== 'undefined') window.addEventListener('online', () => void this.flushOutbox())
   }
 
   // ---- helpers ----
@@ -140,6 +164,7 @@ export class SupabaseRepo implements Repo {
     if (session) {
       this.ensureChannel()
       void this.flushPendingEvents()
+      void this.flushOutbox()
     } else {
       this.dropChannel()
     }
@@ -197,11 +222,82 @@ export class SupabaseRepo implements Repo {
     }
   }
 
+  /** Sends expenses and events saved offline. Safe to call any time; one flush runs at a time. */
+  flushOutbox(): Promise<void> {
+    if (this.flushing) return this.flushing
+    this.flushing = (async () => {
+      const hid = this.session?.householdId
+      if (!hid || isOffline()) return
+      let changed = false
+      for (const item of outbox.all()) {
+        if (item.householdId !== hid) continue
+        let error: { code?: string; message?: string } | null = null
+        try {
+          error = (await this.sb.from('expenses').insert(rowFor(item))).error
+        } catch (e) {
+          error = { message: e instanceof Error ? e.message : 'network' }
+        }
+        // Stored now, or already stored by an earlier attempt whose answer got lost.
+        if (!error || error.code === '23505') {
+          outbox.remove(item.input.id)
+          changed = true
+          continue
+        }
+        if (error.code && PERMANENT_ERRORS.has(error.code)) {
+          // The server will never take it (for example the date is now over a year old): drop it.
+          outbox.remove(item.input.id)
+          changed = true
+          this.track('outbox_dropped', { reason: error.code })
+          continue
+        }
+        break // Still offline or the server is unreachable: try again later, in order.
+      }
+      await this.flushQueuedEvents(hid)
+      if (changed) this.notify()
+    })().finally(() => {
+      this.flushing = null
+    })
+    return this.flushing
+  }
+
+  private async flushQueuedEvents(hid: string): Promise<void> {
+    const queued = eventQueue.all().filter((e) => e.householdId === hid)
+    if (queued.length === 0) return
+    try {
+      const { error } = await this.sb.from('events').insert(
+        queued.map((e) => ({ household_id: e.householdId, member_id: e.memberId, name: e.name, props: { ...e.props, queued_at: e.at } })),
+      )
+      if (!error) {
+        const sent = new Set(queued.map((e) => `${e.at}|${e.name}`))
+        eventQueue.save(eventQueue.all().filter((e) => !(e.householdId === hid && sent.has(`${e.at}|${e.name}`))))
+      }
+    } catch {
+      // Try again on the next flush.
+    }
+  }
+
+  /** The household this device was in, for opening the app without a connection. */
+  private cachedSession(): Session | null {
+    return offlineCache.get().session ?? null
+  }
+
   // ---- Repo ----
 
   async getSession(): Promise<Session | null> {
-    const { data } = await this.sb.auth.getSession()
+    // Known offline: skip the network (the client retries reads with growing waits) and use this device's household.
+    const offlineSession = isOffline() ? this.cachedSession() : null
+    if (offlineSession) {
+      this.setSession(offlineSession)
+      return { ...offlineSession }
+    }
+    const { data, error: authError } = await this.sb.auth.getSession()
     if (!data.session) {
+      // Offline with an expired token the session cannot be refreshed; keep using this device's household.
+      const cached = this.cachedSession()
+      if (cached && (authError || isOffline())) {
+        this.setSession(cached)
+        return { ...cached }
+      }
       this.setSession(null)
       return null
     }
@@ -210,9 +306,18 @@ export class SupabaseRepo implements Repo {
       .select('id, household_id')
       .eq('user_id', data.session.user.id)
       .limit(1)
-    if (error) throw toRepoError(error)
+    if (error) {
+      const repoError = toRepoError(error)
+      const cached = this.cachedSession()
+      if (repoError.code === 'network' && cached) {
+        this.setSession(cached)
+        return { ...cached }
+      }
+      throw repoError
+    }
     const row = rows?.[0] as { id: string; household_id: string } | undefined
     this.setSession(row ? { householdId: row.household_id, memberId: row.id } : null)
+    offlineCache.update({ session: this.session ?? undefined })
     return this.session ? { ...this.session } : null
   }
 
@@ -256,66 +361,131 @@ export class SupabaseRepo implements Repo {
 
   async getHousehold(): Promise<Household> {
     const { householdId } = this.require()
+    if (isOffline()) {
+      const cached = offlineCache.get().household
+      if (cached?.id === householdId) return cached
+      throw new RepoError('network')
+    }
     const { data, error } = await this.sb.from('households').select('*').eq('id', householdId).single()
-    if (error) throw toRepoError(error)
-    return toHousehold(data as HouseholdRow)
+    if (error) {
+      const repoError = toRepoError(error)
+      const cached = offlineCache.get().household
+      if (repoError.code === 'network' && cached?.id === householdId) return cached
+      throw repoError
+    }
+    const household = toHousehold(data as HouseholdRow)
+    offlineCache.update({ household })
+    return household
   }
 
   async getMembers(): Promise<Member[]> {
     const { householdId } = this.require()
+    const cachedMembers = () => {
+      const cached = offlineCache.get().members
+      return cached?.length && cached.every((m) => m.householdId === householdId) ? cached : null
+    }
+    if (isOffline()) {
+      const cached = cachedMembers()
+      if (cached) return cached
+      throw new RepoError('network')
+    }
     const { data, error } = await this.sb
       .from('members')
       .select('id, household_id, display_name, color, created_at')
       .eq('household_id', householdId)
       .order('created_at')
-    if (error) throw toRepoError(error)
-    return (data as MemberRow[]).map(toMember)
+    if (error) {
+      const repoError = toRepoError(error)
+      const cached = cachedMembers()
+      if (repoError.code === 'network' && cached) return cached
+      throw repoError
+    }
+    const members = (data as MemberRow[]).map(toMember)
+    offlineCache.update({ members })
+    return members
   }
 
   async listExpenses(range: { from: string; toExclusive: string }): Promise<Expense[]> {
     const { householdId } = this.require()
-    const { data, error } = await this.sb
-      .from('expenses')
-      .select('*')
-      .eq('household_id', householdId)
-      .is('deleted_at', null)
-      .gte('spent_on', range.from)
-      .lt('spent_on', range.toExclusive)
-      .order('spent_on', { ascending: false })
-      .order('created_at', { ascending: false })
-    if (error) throw toRepoError(error)
-    return (data as ExpenseRow[]).map(toExpense)
+    const cachedList = () => offlineCache.get().expenses?.[rangeKey(range)]?.filter((e) => e.householdId === householdId) ?? null
+    let list: Expense[]
+    if (isOffline()) {
+      const cached = cachedList()
+      if (!cached) throw new RepoError('network')
+      list = cached
+    } else {
+      const { data, error } = await this.sb
+        .from('expenses')
+        .select('*')
+        .eq('household_id', householdId)
+        .is('deleted_at', null)
+        .gte('spent_on', range.from)
+        .lt('spent_on', range.toExclusive)
+        .order('spent_on', { ascending: false })
+        .order('created_at', { ascending: false })
+      if (error) {
+        const repoError = toRepoError(error)
+        const cached = cachedList()
+        if (repoError.code !== 'network' || !cached) throw repoError
+        list = cached
+      } else {
+        list = (data as ExpenseRow[]).map(toExpense)
+        offlineCache.setExpenses(rangeKey(range), list)
+      }
+    }
+    // Expenses saved offline show right away, marked as waiting.
+    const waiting = outbox
+      .all()
+      .filter(
+        (i) =>
+          i.householdId === householdId &&
+          i.input.spentOn >= range.from &&
+          i.input.spentOn < range.toExclusive &&
+          !list.some((e) => e.id === i.input.id),
+      )
+      .map(pendingExpense)
+    return [...list, ...waiting].sort(byNewest)
   }
 
   async addExpense(input: NewExpense): Promise<Expense> {
     const session = this.require()
     checkNewExpense(input, todayInIsrael())
-    const { data, error } = await this.sb
-      .from('expenses')
-      .insert({
-        id: input.id,
-        household_id: session.householdId,
-        member_id: session.memberId,
-        amount_agorot: input.amountAgorot,
-        category: input.category,
-        spent_on: input.spentOn,
-        log_duration_ms: input.logDurationMs,
-      })
-      .select('*')
-      .single()
+    const item: OutboxItem = {
+      householdId: session.householdId,
+      memberId: session.memberId,
+      input,
+      queuedAt: new Date().toISOString(),
+    }
+    // No connection: keep it on the phone and send it later (the client id makes the retry safe).
+    const queue = () => {
+      outbox.add(item)
+      return pendingExpense(item)
+    }
+    if (isOffline()) return queue()
+    let result
+    try {
+      result = await this.sb.from('expenses').insert(rowFor(item)).select('*').single()
+    } catch {
+      return queue()
+    }
+    const { data, error } = result
     if (error) {
       // Same client id already stored (a retry after a lost response): that is a success.
       if (error.code === '23505') {
         const existing = await this.sb.from('expenses').select('*').eq('id', input.id).single()
         if (!existing.error) return toExpense(existing.data as ExpenseRow)
       }
-      throw toRepoError(error)
+      const repoError = toRepoError(error)
+      if (repoError.code === 'network') return queue()
+      throw repoError
     }
     return toExpense(data as ExpenseRow)
   }
 
   async updateExpense(id: string, patch: ExpensePatch): Promise<Expense> {
     this.require()
+    // Not on the server yet; the edit sheet blocks this, so it only guards the repo.
+    if (outbox.has(id)) throw new RepoError('network')
     checkPatch(patch, todayInIsrael())
     const fields: Partial<Pick<ExpenseRow, 'amount_agorot' | 'category' | 'spent_on'>> = {}
     if (patch.amountAgorot !== undefined) fields.amount_agorot = patch.amountAgorot
@@ -330,6 +500,8 @@ export class SupabaseRepo implements Repo {
 
   async deleteExpense(id: string): Promise<void> {
     this.require()
+    // Still waiting to be sent (for example an undo right after an offline save): just drop it.
+    if (outbox.remove(id)) return
     const { data, error } = await this.sb
       .from('expenses')
       .update({ deleted_at: new Date().toISOString() })
@@ -385,16 +557,28 @@ export class SupabaseRepo implements Repo {
 
   track(name: string, props: Record<string, unknown> = {}): void {
     const session = this.session
+    const at = new Date().toISOString()
     if (!session) {
-      if (this.pendingEvents.length < MAX_PENDING_EVENTS) {
-        this.pendingEvents.push({ name, props, at: new Date().toISOString() })
-      }
+      if (this.pendingEvents.length < MAX_PENDING_EVENTS) this.pendingEvents.push({ name, props, at })
+      return
+    }
+    // Offline events wait with the expenses, so offline logging times are not lost.
+    const queue = () => eventQueue.add({ householdId: session.householdId, memberId: session.memberId, name, props, at })
+    if (isOffline()) {
+      queue()
       return
     }
     // Fire and forget: never block the UI, never throw.
-    void Promise.resolve(
-      this.sb.from('events').insert({ household_id: session.householdId, member_id: session.memberId, name, props }),
-    ).catch(() => undefined)
+    void (async () => {
+      try {
+        const { error } = await this.sb
+          .from('events')
+          .insert({ household_id: session.householdId, member_id: session.memberId, name, props })
+        if (error && toRepoError(error).code === 'network') queue()
+      } catch {
+        queue()
+      }
+    })()
   }
 
   async exportData(): Promise<{ expenses: ExportExpense[]; events: ExportEvent[] }> {
@@ -438,6 +622,7 @@ export class SupabaseRepo implements Repo {
   async resetDevice(): Promise<void> {
     this.setSession(null)
     this.pendingEvents = []
+    clearOffline()
     // Ends this device's anonymous user; the invite code is the way back.
     await this.sb.auth.signOut({ scope: 'local' })
   }

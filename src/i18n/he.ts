@@ -72,6 +72,7 @@ export const he = {
   'home.add': 'הוספת הוצאה',
   'home.settings': 'הגדרות',
   'home.paidBy': 'שולם על ידי {name}',
+  'home.pending': 'ממתין לשליחה',
   'home.loadError': 'לא הצלחנו לטעון את הנתונים.',
 
   'add.title': 'הוצאה חדשה', // SPEC
@@ -109,6 +110,8 @@ export const he = {
   'edit.delete': 'מחיקה', // SPEC
   'edit.deleteConfirm': 'למחוק את ההוצאה?', // SPEC
   'edit.deleteYes': 'כן, למחוק',
+  'edit.offline': 'עריכה ומחיקה זמינות כשיש חיבור.',
+  'edit.pending': 'ההוצאה הזאת עוד לא נשלחה. אפשר לערוך אותה אחרי שתישלח.',
 
   'settings.title': 'הגדרות',
   'settings.members': 'מי בקופה',
@@ -142,6 +145,7 @@ export const he = {
   'settings.disconnectSyncYes': 'כן, לנתק',
 
   'demo.banner': 'מצב הדגמה', // SPEC
+  'offline.banner': 'אין חיבור. הוצאות חדשות יישלחו כשהחיבור יחזור.', // SPEC
 } as const
 
 export type MessageKey = keyof typeof he
