@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router'
 import { useReadyData } from '../../app/DataProvider.tsx'
 import { LIMITS } from '../../config.ts'
 import type { CategoryId } from '../../domain/categories.ts'
-import { addDays, todayInIsrael } from '../../domain/cycle.ts'
+import { addDays, cycleFor, todayInIsrael } from '../../domain/cycle.ts'
 import { agorotToKeypad, keypadReducer } from '../../domain/keypad.ts'
 import { exceedsMax, parseAmount } from '../../domain/money.ts'
 import type { Expense, ExpensePatch } from '../../domain/types.ts'
@@ -70,7 +70,7 @@ function EditForm({
   /** Tells the parent this sheet is closing itself, so a vanished expense is not reported as deleted elsewhere. */
   setDone: (value: boolean) => void
 }) {
-  const { repo, run, highlight, members } = useReadyData()
+  const { repo, run, highlight, members, household } = useReadyData()
   const toast = useToast()
   // What the form opened with. Diffing against this (not the live expense) means a change
   // made in another tab to a field the user did not touch is never reverted.
@@ -125,7 +125,9 @@ function EditForm({
     }
     repo.track('expense_edit', { fields })
     highlight(expense.id)
-    toast.show({ message: t('toast.updated') })
+    // A new date in an earlier cycle takes the row out of this list; say so instead of a bare 'saved'.
+    const movedEarlier = patch.spentOn !== undefined && patch.spentOn < cycleFor(todayInIsrael(), household.cycleStartDay).start
+    toast.show({ message: t(movedEarlier ? 'toast.updatedEarlierCycle' : 'toast.updated') })
     onClose()
   }
 

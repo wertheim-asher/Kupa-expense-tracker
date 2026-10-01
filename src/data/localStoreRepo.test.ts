@@ -150,6 +150,16 @@ describe('LocalStoreRepo (LocalRepo)', () => {
     expect(await reloaded.listExpenses({ from: '2026-09-10', toExclusive: '2026-10-10' })).toHaveLength(1)
   })
 
+  it('two tabs writing back to back never lose each other\'s expense', async () => {
+    const { repo: tabA, storage } = await withHousehold()
+    const tabB = new LocalStoreRepo({ key: 'test', storage, clock })
+    await tabB.getSession() // B fills its cache now, before A writes
+    await tabA.addExpense({ id: 'from-a', amountAgorot: 100, category: 'fun', spentOn: TODAY, logDurationMs: null })
+    await tabB.addExpense({ id: 'from-b', amountAgorot: 200, category: 'home', spentOn: TODAY, logDurationMs: null })
+    const ids = (await new LocalStoreRepo({ key: 'test', storage, clock }).listExpenses({ from: '2026-09-10', toExclusive: '2026-10-10' })).map((e) => e.id)
+    expect(ids.sort()).toEqual(['from-a', 'from-b'])
+  })
+
   it('a failed write rejects and leaves the data unchanged', async () => {
     const { repo, storage } = await withHousehold()
     storage.failWrites = true

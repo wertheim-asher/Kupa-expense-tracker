@@ -61,6 +61,8 @@ export const he = {
   'toast.undo': 'ביטול', // SPEC
   'toast.undone': 'ההוצאה בוטלה',
   'toast.updated': 'השינויים נשמרו',
+  'toast.updatedEarlierCycle': 'השינויים נשמרו. ההוצאה עברה למחזור קודם.',
+  'toast.inEarlierCycle': 'במחזור קודם',
   'toast.deleted': 'ההוצאה נמחקה',
   'toast.goneElsewhere': 'ההוצאה הזאת נמחקה במקום אחר',
   'toast.leftCycle': 'ההוצאה הזאת כבר לא במחזור הנוכחי',

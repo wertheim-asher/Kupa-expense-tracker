@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { repoFor } from '../data/mode.ts'
-import { addDays, todayInIsrael } from '../domain/cycle.ts'
+import { addDays, cycleFor, todayInIsrael } from '../domain/cycle.ts'
 import type { StoreData } from '../data/store.ts'
 import { App } from './App.tsx'
 
@@ -179,6 +179,54 @@ describe('core flow (LocalRepo)', () => {
     expect(stored().expenses[0].amountAgorot).toBe(4500)
   })
 
+  it('ignores a tap on the list right after saving, so a double tap never opens an edit sheet', async () => {
+    const user = userEvent.setup()
+    render(<App initialMode="local" />)
+    await createBudget(user)
+    await user.click(screen.getByRole('button', { name: 'הוספת הוצאה' }))
+    const sheet = await screen.findByRole('dialog', { name: 'הוצאה חדשה' })
+    await typeOnKeypad(user, '45')
+    await user.click(within(sheet).getByRole('button', { name: 'סופר' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    // The "second tap" lands on the new row underneath.
+    await user.click(screen.getByRole('link', { name: /סופר/ }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(stored().expenses).toHaveLength(1)
+  })
+
+  it('says so when an added or edited expense lands in an earlier cycle', async () => {
+    const user = userEvent.setup()
+    render(<App initialMode="local" />)
+    await createBudget(user)
+    const today = todayInIsrael()
+    const beforeCycle = addDays(cycleFor(today, 10).start, -1)
+
+    // Add with a date before this cycle.
+    await user.click(screen.getByRole('button', { name: 'הוספת הוצאה' }))
+    let sheet = await screen.findByRole('dialog', { name: 'הוצאה חדשה' })
+    await typeOnKeypad(user, '12')
+    fireEvent.change(within(sheet).getByLabelText('תאריך אחר'), { target: { value: beforeCycle } })
+    await user.click(within(sheet).getByRole('button', { name: 'פנאי' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(visible(screen.getByRole('status').textContent ?? '')).toMatch(/במחזור קודם/)
+    expect(stored().expenses[0].spentOn).toBe(beforeCycle)
+
+    // Edit a current expense into an earlier cycle.
+    await user.click(screen.getByRole('button', { name: 'הוספת הוצאה' }))
+    sheet = await screen.findByRole('dialog', { name: 'הוצאה חדשה' })
+    await typeOnKeypad(user, '34')
+    await user.click(within(sheet).getByRole('button', { name: 'בית' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await new Promise((resolve) => setTimeout(resolve, 650))
+    await user.click(screen.getByRole('link', { name: /בית/ }))
+    const edit = await screen.findByRole('dialog', { name: 'עריכת הוצאה' })
+    fireEvent.change(within(edit).getByLabelText('תאריך'), { target: { value: beforeCycle } })
+    await user.click(within(edit).getByRole('button', { name: 'שמירה' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(visible(screen.getByRole('status').textContent ?? '')).toBe('השינויים נשמרו. ההוצאה עברה למחזור קודם.')
+    expect(screen.queryByRole('link', { name: /בית/ })).not.toBeInTheDocument()
+  })
+
   it('edits the category of an expense', async () => {
     const user = userEvent.setup()
     render(<App initialMode="local" />)
@@ -189,6 +237,8 @@ describe('core flow (LocalRepo)', () => {
     await user.click(within(sheet).getByRole('button', { name: 'סופר' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
+    // Taps on the list are ignored for 600ms after a save (double-tap guard); a person taps later.
+    await new Promise((resolve) => setTimeout(resolve, 650))
     await user.click(screen.getByRole('link', { name: /סופר/ }))
     const edit = await screen.findByRole('dialog', { name: 'עריכת הוצאה' })
     await user.click(within(edit).getByRole('button', { name: 'פנאי' }))

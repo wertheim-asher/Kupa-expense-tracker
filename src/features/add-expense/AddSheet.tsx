@@ -3,7 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router'
 import { useReadyData } from '../../app/DataProvider.tsx'
 import { LIMITS, TIMING } from '../../config.ts'
 import type { CategoryId } from '../../domain/categories.ts'
-import { todayInIsrael } from '../../domain/cycle.ts'
+import { cycleFor, todayInIsrael } from '../../domain/cycle.ts'
 import { keypadReducer } from '../../domain/keypad.ts'
 import { exceedsMax, parseAmount } from '../../domain/money.ts'
 import { uuid } from '../../data/uuid.ts'
@@ -18,7 +18,7 @@ import { Keypad } from '../../ui/Keypad.tsx'
 import { Money } from '../../ui/Money.tsx'
 import { Sheet } from '../../ui/Sheet.tsx'
 import { useToast } from '../../ui/Toast.tsx'
-import { addSessionStart, endAddSession } from './addSession.ts'
+import { addSessionStart, endAddSession, markAddSaved } from './addSession.ts'
 import { DateChips, resolveDay, type DayChoice } from './DateChips.tsx'
 
 /** The core flow: type an amount, tap a category, and it is saved. */
@@ -31,7 +31,7 @@ export function AddSheet() {
 function AddSheetBody({ startedAt }: { startedAt: number }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { repo, run, highlight } = useReadyData()
+  const { repo, run, highlight, household } = useReadyData()
   const toast = useToast()
 
   const [raw, dispatch] = useReducer(keypadReducer, '')
@@ -120,6 +120,7 @@ function AddSheetBody({ startedAt }: { startedAt: number }) {
     }
     finishedRef.current = true
     endAddSession()
+    markAddSaved(performance.now())
     repo.track('add_save', { duration_ms: durationMs, category })
     highlight(id)
     toast.show({
@@ -127,6 +128,8 @@ function AddSheetBody({ startedAt }: { startedAt: number }) {
         <>
           {t('toast.saved')} <Money agorot={amount} /> · {categoryName(category)}
           {spentOn !== now && <> · {dayLabel(spentOn, now)}</>}
+          {/* It won't show in the current list, so say where it went. */}
+          {spentOn < cycleFor(now, household.cycleStartDay).start && <> · {t('toast.inEarlierCycle')}</>}
         </>
       ),
       action: { label: t('toast.undo'), onClick: () => void undo(id) },

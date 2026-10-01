@@ -90,9 +90,24 @@ export class LocalStoreRepo implements Repo {
     this.storage?.setItem(this.key, JSON.stringify(next))
   }
 
-  /** Applies a change to a copy, persists it, and only then makes it current. */
+  /** What is in storage right now; another tab may have written since the cache was filled. */
+  private fresh(): StoreData {
+    try {
+      const raw = this.storage?.getItem(this.key)
+      const stored: unknown = raw ? JSON.parse(raw) : null
+      if (isStoreData(stored)) {
+        this.data = stored
+        return stored
+      }
+    } catch {
+      // Fall back to the cache below.
+    }
+    return this.load()
+  }
+
+  /** Applies a change to a fresh copy, persists it, and only then makes it current. */
   private mutate<T>(change: (draft: StoreData) => T): T {
-    const draft = structuredClone(this.load())
+    const draft = structuredClone(this.fresh())
     const result = change(draft)
     try {
       this.write(draft)

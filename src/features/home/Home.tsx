@@ -14,7 +14,7 @@ import { Money } from '../../ui/Money.tsx'
 import { useAnimatedNumber } from '../../ui/motion.ts'
 import { ProgressBar } from '../../ui/ProgressBar.tsx'
 import { Skeleton } from '../../ui/Skeleton.tsx'
-import { beginAddSession } from '../add-expense/addSession.ts'
+import { beginAddSession, justSaved } from '../add-expense/addSession.ts'
 
 export function Home() {
   const { household, cycle, expenses, members, today, highlightIds, repo } = useReadyData()
@@ -155,6 +155,10 @@ function ExpenseList({
                 <Link
                   to={`/expense/${e.id}`}
                   state={{ fromApp: true }}
+                  onClick={(event) => {
+                    // The second tap of a double tap on a category lands here right after a save.
+                    if (justSaved()) event.preventDefault()
+                  }}
                   className={cls(
                     // Inset focus ring: the list's overflow-hidden would clip an outer one.
                     'flex min-h-16 items-center gap-3 px-4 py-3 active:bg-bg focus-visible:-outline-offset-3',
