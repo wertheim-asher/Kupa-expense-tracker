@@ -21,6 +21,7 @@ const ERRORS: Partial<Record<string, MessageKey>> = {
   code_not_found: 'join.notFound',
   household_full: 'join.full',
   already_member: 'join.already',
+  personal_code_invalid: 'join.personalInvalid',
   network: 'error.network',
 }
 
@@ -48,24 +49,30 @@ function Join({ onJoined }: { onJoined: () => void }) {
   const { repo, refresh } = useData()
   const [code, setCode] = useState(() => normalizeCode(params.code ?? ''))
   const [name, setName] = useState('')
+  // Coming back from another device: the personal code replaces the name.
+  const [rejoin, setRejoin] = useState(false)
+  const [personal, setPersonal] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<MessageKey | null>(null)
   const codeRef = useRef<HTMLInputElement>(null)
   const nameRef = useRef<HTMLInputElement>(null)
+  const personalRef = useRef<HTMLInputElement>(null)
 
   const codeOk = code.length === 6
   const nameOk = name.trim().length >= 1 && name.trim().length <= LIMITS.maxNameLength
+  const personalOk = personal.length === 6
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
     setSubmitted(true)
     if (!codeOk) return codeRef.current?.focus()
-    if (!nameOk) return nameRef.current?.focus()
+    if (rejoin && !personalOk) return personalRef.current?.focus()
+    if (!rejoin && !nameOk) return nameRef.current?.focus()
     setBusy(true)
     setError(null)
     try {
-      await repo.joinHousehold(code, name)
+      await repo.joinHousehold(code, rejoin ? '' : name, rejoin ? personal : undefined)
     } catch (e) {
       setBusy(false)
       setError((e instanceof RepoError && ERRORS[e.code]) || 'join.error')
@@ -120,26 +127,66 @@ function Join({ onJoined }: { onJoined: () => void }) {
           </p>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <label htmlFor="join-name" className="font-medium">
-            {t('create.name')}
-          </label>
-          <input
-            ref={nameRef}
-            id="join-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={LIMITS.maxNameLength}
-            autoComplete="given-name"
-            enterKeyHint="go"
-            aria-invalid={(submitted && !nameOk) || undefined}
-            aria-describedby="join-name-help"
-            className={fieldClass}
-          />
-          <p id="join-name-help" className={submitted && !nameOk ? 'text-sm font-medium text-over' : 'text-sm text-muted'}>
-            {submitted && !nameOk ? t('create.nameRequired') : t('join.rejoinHint')}
-          </p>
-        </div>
+        {rejoin ? (
+          <div className="flex flex-col gap-2">
+            <label htmlFor="join-personal" className="font-medium">
+              {t('join.personal')}
+            </label>
+            <input
+              ref={personalRef}
+              id="join-personal"
+              value={personal}
+              onChange={(e) => setPersonal(normalizeCode(e.target.value))}
+              dir="ltr"
+              autoCapitalize="characters"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="go"
+              aria-invalid={(submitted && !personalOk) || undefined}
+              aria-describedby="join-personal-help"
+              className={`${fieldClass} text-center text-2xl font-bold tracking-[0.3em] uppercase`}
+            />
+            <p id="join-personal-help" className={submitted && !personalOk ? 'text-sm font-medium text-over' : 'text-sm text-muted'}>
+              {submitted && !personalOk ? t('join.codeInvalid') : t('join.personalHelp')}
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <label htmlFor="join-name" className="font-medium">
+              {t('create.name')}
+            </label>
+            <input
+              ref={nameRef}
+              id="join-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={LIMITS.maxNameLength}
+              autoComplete="given-name"
+              enterKeyHint="go"
+              aria-invalid={(submitted && !nameOk) || undefined}
+              aria-describedby={submitted && !nameOk ? 'join-name-error' : undefined}
+              className={fieldClass}
+            />
+            {submitted && !nameOk && (
+              <p id="join-name-error" className="text-sm font-medium text-over">
+                {t('create.nameRequired')}
+              </p>
+            )}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => {
+            setRejoin((r) => !r)
+            setSubmitted(false)
+            setError(null)
+          }}
+          className="min-h-12 self-start text-start font-medium text-primary underline underline-offset-4"
+        >
+          {rejoin ? t('join.newToggle') : t('join.rejoinToggle')}
+        </button>
 
         <div className="mt-auto flex flex-col gap-3">
           {error && (
@@ -148,7 +195,7 @@ function Join({ onJoined }: { onJoined: () => void }) {
             </p>
           )}
           <Button type="submit" className="min-h-14 w-full text-lg" disabled={busy}>
-            {t('join.submit')}
+            {rejoin ? t('join.rejoinSubmit') : t('join.submit')}
           </Button>
         </div>
       </form>

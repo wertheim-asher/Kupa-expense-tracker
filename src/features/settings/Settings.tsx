@@ -1,5 +1,5 @@
 import { ChevronLeft, Download, LogOut, Pencil, RotateCcw, Unplug } from 'lucide-react'
-import { useId, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { useReadyData } from '../../app/DataProvider.tsx'
 import { useMode } from '../../app/ModeContext.tsx'
@@ -32,6 +32,22 @@ export function Settings() {
   const { repo, run, household, members, session } = data
 
   const saved = () => toast.show({ message: t('settings.saved') })
+
+  // This member's private code for taking their seat back from another device (shared backend only).
+  const [personalCode, setPersonalCode] = useState<string | null>(null)
+  useEffect(() => {
+    if (!syncEnabled || mode === 'demo') return
+    let cancelled = false
+    repo
+      .getMyPersonalCode()
+      .then((code) => {
+        if (!cancelled) setPersonalCode(code)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [repo, mode])
   const failed = () => toast.show({ message: t('toast.actionFailed') })
 
   const exportCsv = async (type: 'expenses' | 'events') => {
@@ -95,6 +111,15 @@ export function Settings() {
             ) : (
               // Both seats taken: the code stays visible, small, for getting back in from another device.
               <p className="p-4 text-sm text-muted">{t('invite.recovery', { code: household.inviteCode })}</p>
+            )}
+            {personalCode && (
+              <div className="border-t border-border p-4 text-sm">
+                <p className="font-medium">
+                  {t('settings.personalCode', { code: '' })}
+                  <bdi className="font-bold tracking-[0.2em]">{personalCode}</bdi>
+                </p>
+                <p className="mt-1 text-muted">{t('settings.personalHelp')}</p>
+              </div>
             )}
           </Card>
         )}
@@ -198,6 +223,7 @@ export function Settings() {
         ) : (
           <DisconnectCard
             inviteCode={syncEnabled ? household.inviteCode : null}
+            personalCode={personalCode}
             onConfirm={async () => {
               await repo.resetDevice()
               await data.refresh()
@@ -373,9 +399,17 @@ function BudgetForm({ budgetAgorot, onSave }: { budgetAgorot: number; onSave: (a
 
 /**
  * On-device only: disconnecting deletes this device's data. With partner sync: the data stays on the
- * server, and the invite code (shown in the warning) is the way back.
+ * server, and the invite code plus the personal code (both shown in the warning) are the way back.
  */
-function DisconnectCard({ onConfirm, inviteCode }: { onConfirm: () => Promise<void>; inviteCode: string | null }) {
+function DisconnectCard({
+  onConfirm,
+  inviteCode,
+  personalCode,
+}: {
+  onConfirm: () => Promise<void>
+  inviteCode: string | null
+  personalCode: string | null
+}) {
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   return (
@@ -391,6 +425,12 @@ function DisconnectCard({ onConfirm, inviteCode }: { onConfirm: () => Promise<vo
                     {t('settings.disconnectCode', { code: '' })}
                     <bdi className="font-bold tracking-[0.2em]">{inviteCode}</bdi>
                   </p>
+                  {personalCode && (
+                    <p>
+                      {t('settings.personalCode', { code: '' })}
+                      <bdi className="font-bold tracking-[0.2em]">{personalCode}</bdi>
+                    </p>
+                  )}
                 </>
               ) : (
                 <p>{t('settings.disconnectWarnLocal')}</p>

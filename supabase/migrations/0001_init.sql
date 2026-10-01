@@ -125,7 +125,7 @@ begin
     new.household_id := old.household_id;
     new.color := old.color;
     new.created_at := old.created_at;
-    -- user_id may only change inside join_household (a member taking their seat back).
+    -- user_id may only change inside join_household (a member taking their own seat back with their personal code).
     if current_setting('kupa.rejoin', true) is distinct from 'on' then
       new.user_id := old.user_id;
     end if;
@@ -227,6 +227,20 @@ begin
   return code;
 end $$;
 
+-- Each member's private personal code: with the invite code, it lets that member take their own
+-- seat back from a new device (lost session, new phone). Readable only by its owner; changes after use.
+create table public.member_secrets (
+  member_id uuid primary key references public.members (id) on delete cascade,
+  personal_code text not null check (personal_code ~ '^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{6}$')
+);
+
+alter table public.member_secrets enable row level security;
+revoke all on public.member_secrets from anon, authenticated;
+grant select on public.member_secrets to authenticated;
+create policy member_secrets_select_own on public.member_secrets
+  for select to authenticated
+  using (exists (select 1 from public.members m where m.id = member_id and m.user_id = (select auth.uid())));
+
 create or replace function public.create_household(p_display_name text, p_budget_agorot int, p_cycle_start_day int)
 returns jsonb
 language plpgsql
@@ -237,6 +251,7 @@ declare
   v_uid uuid := auth.uid();
   v_name text := btrim(coalesce(p_display_name, ''));
   v_code text;
+  v_personal text := public.new_invite_code();
   v_hid uuid;
   v_mid uuid;
 begin
@@ -265,13 +280,14 @@ begin
   insert into public.members (household_id, user_id, display_name, color)
   values (v_hid, v_uid, v_name, 'teal')
   returning id into v_mid;
+  insert into public.member_secrets (member_id, personal_code) values (v_mid, v_personal);
   return jsonb_build_object('household_id', v_hid, 'member_id', v_mid, 'invite_code', v_code);
 end $$;
 
--- Join by invite code. Case-insensitive, spaces ignored.
--- Someone who lost their session (cleared data, new phone) takes their own seat back by joining
--- with the same name, keeping their history. Otherwise a household holds at most 2 members.
-create or replace function public.join_household(p_code text, p_display_name text)
+-- Join by invite code (case-insensitive, spaces ignored). A household holds at most 2 members.
+-- With a personal code as well, the caller takes back the seat that code belongs to (same member,
+-- same history) instead of joining as someone new; the personal code then changes.
+create or replace function public.join_household(p_code text, p_display_name text, p_personal_code text default null)
 returns jsonb
 language plpgsql
 security definer
@@ -281,15 +297,13 @@ declare
   v_uid uuid := auth.uid();
   v_name text := btrim(coalesce(p_display_name, ''));
   v_code text := upper(regexp_replace(coalesce(p_code, ''), '\s', '', 'g'));
+  v_personal text := upper(regexp_replace(coalesce(p_personal_code, ''), '\s', '', 'g'));
   v_hid uuid;
   v_mid uuid;
   v_count int;
 begin
   if v_uid is null then
     raise exception 'not_authenticated' using errcode = '28000';
-  end if;
-  if char_length(v_name) < 1 or char_length(v_name) > 30 then
-    raise exception 'invalid_input' using errcode = '22023';
   end if;
   if exists (select 1 from public.members where user_id = v_uid) then
     raise exception 'already_member' using errcode = 'P0001';
@@ -300,17 +314,24 @@ begin
     raise exception 'code_not_found' using errcode = 'P0001';
   end if;
 
-  select id into v_mid from public.members
-  where household_id = v_hid and lower(display_name) = lower(v_name)
-  order by created_at
-  limit 1;
-  if v_mid is not null then
+  if v_personal <> '' then
+    select m.id into v_mid
+    from public.members m
+    join public.member_secrets s on s.member_id = m.id
+    where m.household_id = v_hid and s.personal_code = v_personal;
+    if v_mid is null then
+      raise exception 'personal_code_invalid' using errcode = 'P0001';
+    end if;
     perform set_config('kupa.rejoin', 'on', true);
     update public.members set user_id = v_uid where id = v_mid;
     perform set_config('kupa.rejoin', 'off', true);
+    update public.member_secrets set personal_code = public.new_invite_code() where member_id = v_mid;
     return jsonb_build_object('household_id', v_hid, 'member_id', v_mid, 'rejoined', true);
   end if;
 
+  if char_length(v_name) < 1 or char_length(v_name) > 30 then
+    raise exception 'invalid_input' using errcode = '22023';
+  end if;
   select count(*) into v_count from public.members where household_id = v_hid;
   if v_count >= 2 then
     raise exception 'household_full' using errcode = 'P0001';
@@ -318,16 +339,19 @@ begin
   insert into public.members (household_id, user_id, display_name, color)
   values (v_hid, v_uid, v_name, 'violet')
   returning id into v_mid;
+  insert into public.member_secrets (member_id, personal_code) values (v_mid, public.new_invite_code());
   return jsonb_build_object('household_id', v_hid, 'member_id', v_mid, 'rejoined', false);
 end $$;
 
--- Only the two RPCs are callable by clients; helpers stay internal.
+-- Only the two RPCs are callable by clients; helpers stay internal. Grants are explicit, so the
+-- script works whether or not the project exposes new functions automatically.
 revoke execute on function public.new_invite_code() from public, anon, authenticated;
 revoke execute on function public.israel_today() from public, anon;
+grant execute on function public.israel_today() to authenticated;
 revoke execute on function public.create_household(text, int, int) from public, anon;
-revoke execute on function public.join_household(text, text) from public, anon;
+revoke execute on function public.join_household(text, text, text) from public, anon;
 grant execute on function public.create_household(text, int, int) to authenticated;
-grant execute on function public.join_household(text, text) to authenticated;
+grant execute on function public.join_household(text, text, text) to authenticated;
 revoke execute on function public.is_member(uuid) from public, anon;
 revoke execute on function public.my_member_id(uuid) from public, anon;
 grant execute on function public.is_member(uuid) to authenticated;

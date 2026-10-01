@@ -41,7 +41,12 @@ export const he = {
   'join.title': 'הצטרפות לקופה משותפת',
   'join.code': 'קוד הזמנה', // SPEC
   'join.codeHelp': '6 תווים, מהקישור או מההודעה שקיבלתם',
-  'join.rejoinHint': 'כבר הייתם בקופה הזאת ממכשיר אחר? מצטרפים עם אותו שם כדי לחזור למקום שלכם.',
+  'join.rejoinToggle': 'חוזרים ממכשיר אחר?',
+  'join.newToggle': 'מצטרפים בפעם הראשונה?',
+  'join.personal': 'הקוד האישי שלך',
+  'join.personalHelp': 'מופיע בהגדרות במכשיר הקודם. כך חוזרים למקום שלך עם כל ההיסטוריה.',
+  'join.personalInvalid': 'הקוד האישי לא מתאים לקופה הזאת. כדאי לבדוק אותו שוב.',
+  'join.rejoinSubmit': 'חזרה לקופה',
   'join.submit': 'הצטרפות',
   'join.codeInvalid': 'הקוד צריך להיות 6 תווים.',
   'join.notFound': 'הקוד לא נמצא. כדאי לבדוק אותו שוב.', // SPEC
@@ -130,6 +135,8 @@ export const he = {
   'settings.invite': 'הזמנה לקופה',
   'settings.disconnectWarn': 'כדאי לשמור את קוד ההזמנה לפני. בלעדיו אי אפשר לחזור.', // SPEC
   'settings.disconnectCode': 'קוד ההזמנה: {code}',
+  'settings.personalCode': 'הקוד האישי שלך: {code}',
+  'settings.personalHelp': 'שומרים אותו יחד עם קוד ההזמנה. שניהם יחד מחזירים אותך למקום שלך ממכשיר אחר.',
   'settings.disconnectSyncYes': 'כן, לנתק',
 
   'demo.banner': 'מצב הדגמה', // SPEC

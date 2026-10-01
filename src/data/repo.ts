@@ -18,7 +18,10 @@ import type {
 export interface Repo {
   getSession(): Promise<Session | null>
   createHousehold(input: CreateInput): Promise<CreateResult>
-  joinHousehold(code: string, displayName: string): Promise<JoinResult>
+  /** With a personal code, takes back that member's own seat (new device) instead of joining as someone new. */
+  joinHousehold(code: string, displayName: string, personalCode?: string): Promise<JoinResult>
+  /** This member's private personal code (shared backend only; null on device-only storage). */
+  getMyPersonalCode(): Promise<string | null>
   getHousehold(): Promise<Household>
   getMembers(): Promise<Member[]>
   /** Non-deleted expenses with from <= spentOn < toExclusive (ISO dates). */
@@ -48,6 +51,7 @@ export type RepoErrorCode =
   | 'storage_failed'
   | 'code_not_found'
   | 'household_full'
+  | 'personal_code_invalid'
   /** No connection, or the server could not be reached. */
   | 'network'
   /** Anything else the server reported. */

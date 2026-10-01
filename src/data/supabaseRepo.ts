@@ -89,7 +89,7 @@ const toExpense = (r: ExpenseRow): Expense => ({
   deletedAt: r.deleted_at,
 })
 
-const RPC_CODES: RepoErrorCode[] = ['already_member', 'code_not_found', 'household_full', 'invalid_input']
+const RPC_CODES: RepoErrorCode[] = ['already_member', 'code_not_found', 'household_full', 'personal_code_invalid', 'invalid_input']
 
 /** Turns a Supabase error (or a thrown fetch error) into a RepoError the UI understands. */
 function toRepoError(error: PostgrestError | Error | { message?: string; code?: string } | null): RepoError {
@@ -232,14 +232,26 @@ export class SupabaseRepo implements Repo {
     return { householdId: result.household_id, memberId: result.member_id, inviteCode: result.invite_code }
   }
 
-  async joinHousehold(code: string, displayName: string): Promise<JoinResult> {
-    const name = cleanName(displayName)
+  async joinHousehold(code: string, displayName: string, personalCode?: string): Promise<JoinResult> {
+    // Taking a seat back needs no name: the seat keeps its own.
+    const name = personalCode ? displayName.trim() : cleanName(displayName)
     await this.ensureSignedIn()
-    const { data, error } = await this.sb.rpc('join_household', { p_code: code, p_display_name: name })
+    const { data, error } = await this.sb.rpc('join_household', {
+      p_code: code,
+      p_display_name: name,
+      p_personal_code: personalCode ?? null,
+    })
     if (error) throw toRepoError(error)
     const result = data as { household_id: string; member_id: string }
     this.setSession({ householdId: result.household_id, memberId: result.member_id })
     return { householdId: result.household_id, memberId: result.member_id }
+  }
+
+  async getMyPersonalCode(): Promise<string | null> {
+    const { memberId } = this.require()
+    const { data, error } = await this.sb.from('member_secrets').select('personal_code').eq('member_id', memberId).maybeSingle()
+    if (error) throw toRepoError(error)
+    return (data as { personal_code: string } | null)?.personal_code ?? null
   }
 
   async getHousehold(): Promise<Household> {

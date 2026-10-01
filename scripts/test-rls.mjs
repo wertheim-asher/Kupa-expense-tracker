@@ -99,17 +99,34 @@ const bAsA = await b.from('expenses').insert({
 })
 check('B cannot add an expense as A', Boolean(bAsA.error), bAsA.error?.code ?? 'insert succeeded!')
 
-// --- A third person: full household; and rejoin by the same name ---
+// --- Personal codes: private, and the only way to take a seat back ---
+const aSecret = await a.from('member_secrets').select('personal_code').eq('member_id', aMember).maybeSingle()
+const aPersonal = aSecret.data?.personal_code
+check('A can read their own personal code', !aSecret.error && /^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{6}$/.test(aPersonal ?? ''), aSecret.error?.message ?? aPersonal)
+const bPeek = await b.from('member_secrets').select('personal_code').eq('member_id', aMember)
+check('B (a member now) cannot read A\'s personal code', !bPeek.error && bPeek.data.length === 0, bPeek.error?.message ?? `${bPeek.data?.length} rows`)
+
+// --- A third person: full household; a name alone never takes a seat ---
 const c = await anonymousUser()
 const full = await c.rpc('join_household', { p_code: code, p_display_name: `rls-test-C-${run}` })
 check('a third person gets household_full', full.error?.message?.includes('household_full') === true, full.error?.message)
+const sameName = await c.rpc('join_household', { p_code: code, p_display_name: `rls-test-A-${run}` })
+check('using A\'s name with the code does not take A\'s seat', sameName.error?.message?.includes('household_full') === true, sameName.error?.message ?? 'joined!')
+const guess = await c.rpc('join_household', { p_code: code, p_display_name: 'x', p_personal_code: 'AAAAAA' })
+check('a wrong personal code is rejected', guess.error?.message?.includes('personal_code_invalid') === true, guess.error?.message ?? 'joined!')
 const already = await b.rpc('join_household', { p_code: code, p_display_name: 'again' })
 check('joining twice gives already_member', already.error?.message?.includes('already_member') === true, already.error?.message)
+
+// --- A on a new phone takes the seat back with invite code + personal code ---
 const newPhone = await anonymousUser()
-const rejoin = await newPhone.rpc('join_household', { p_code: code, p_display_name: `RLS-TEST-A-${run}` })
-check('A on a new phone rejoins by name and keeps the same seat', !rejoin.error && rejoin.data?.member_id === aMember, rejoin.error?.message)
+const rejoin = await newPhone.rpc('join_household', { p_code: code, p_display_name: '', p_personal_code: aPersonal })
+check('A on a new phone takes the same seat back with the personal code', !rejoin.error && rejoin.data?.member_id === aMember, rejoin.error?.message)
 const oldPhone = await a.from('expenses').select('id').eq('household_id', hid)
 check('A\'s old phone no longer sees the household', !oldPhone.error && oldPhone.data.length === 0, oldPhone.error?.message ?? `${oldPhone.data?.length} rows`)
+const newSecret = await newPhone.from('member_secrets').select('personal_code').eq('member_id', aMember).maybeSingle()
+check('the personal code changed after use', !newSecret.error && newSecret.data?.personal_code && newSecret.data.personal_code !== aPersonal, newSecret.error?.message)
+const reuse = await (await anonymousUser()).rpc('join_household', { p_code: code, p_display_name: '', p_personal_code: aPersonal })
+check('the old personal code no longer works', reuse.error?.message?.includes('personal_code_invalid') === true, reuse.error?.message ?? 'joined!')
 
 console.log(failures === 0 ? '\nAll RLS checks passed.' : `\n${failures} check(s) FAILED.`)
 process.exit(failures === 0 ? 0 : 1)

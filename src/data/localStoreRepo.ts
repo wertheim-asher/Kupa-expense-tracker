@@ -160,7 +160,11 @@ export class LocalStoreRepo implements Repo {
     })
   }
 
-  async joinHousehold(_code: string, _displayName: string): Promise<JoinResult> {
+  async getMyPersonalCode(): Promise<string | null> {
+    return null
+  }
+
+  async joinHousehold(_code: string, _displayName: string, _personalCode?: string): Promise<JoinResult> {
     // Joining needs a shared backend (Phase 3). The fast lane hides every join entry point.
     throw new RepoError('unsupported')
   }
