@@ -74,7 +74,10 @@ set search_path = ''
 as $$
 begin
   new.id := old.id;
-  new.invite_code := old.invite_code;
+  -- The invite code changes only inside join_household (a rejoin while the second seat is free).
+  if current_setting('kupa.rejoin', true) is distinct from 'on' then
+    new.invite_code := old.invite_code;
+  end if;
   new.created_at := old.created_at;
   new.updated_at := now();
   return new;
@@ -209,8 +212,9 @@ create policy events_select on public.events
 -- RPCs
 -- ---------------------------------------------------------------------------
 
--- 6 characters from ABCDEFGHJKMNPQRSTUVWXYZ23456789 (no 0, O, 1, I, L), from a secure random source.
-create or replace function public.new_invite_code()
+-- p_len characters from ABCDEFGHJKMNPQRSTUVWXYZ23456789 (no 0, O, 1, I, L), from a secure random
+-- source. Bytes of 248 and above are skipped, so every character is equally likely.
+create or replace function public.random_code(p_len int)
 returns text
 language plpgsql
 volatile
@@ -218,20 +222,43 @@ set search_path = ''
 as $$
 declare
   alphabet constant text := 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  bytes bytea := extensions.gen_random_bytes(6);
+  bytes bytea;
+  b int;
   code text := '';
 begin
-  for i in 0..5 loop
-    code := code || substr(alphabet, (get_byte(bytes, i) % 31) + 1, 1);
+  while char_length(code) < p_len loop
+    bytes := extensions.gen_random_bytes(16);
+    for i in 0..15 loop
+      b := get_byte(bytes, i);
+      if b < 248 and char_length(code) < p_len then
+        code := code || substr(alphabet, (b % 31) + 1, 1);
+      end if;
+    end loop;
   end loop;
   return code;
 end $$;
+
+-- Invite code: 6 characters, easy to read out and type (SPEC section 3).
+create or replace function public.new_invite_code()
+returns text
+language sql
+volatile
+set search_path = ''
+as $$ select public.random_code(6) $$;
+
+-- Personal code: 12 characters (about 59 bits), so it cannot be guessed even with unlimited tries.
+create or replace function public.new_personal_code()
+returns text
+language sql
+volatile
+set search_path = ''
+as $$ select public.random_code(12) $$;
 
 -- Each member's private personal code: with the invite code, it lets that member take their own
 -- seat back from a new device (lost session, new phone). Readable only by its owner; changes after use.
 create table public.member_secrets (
   member_id uuid primary key references public.members (id) on delete cascade,
-  personal_code text not null check (personal_code ~ '^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{6}$')
+  personal_code text not null check (personal_code ~ '^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{12}$')
 );
 
 alter table public.member_secrets enable row level security;
@@ -251,7 +278,7 @@ declare
   v_uid uuid := auth.uid();
   v_name text := btrim(coalesce(p_display_name, ''));
   v_code text;
-  v_personal text := public.new_invite_code();
+  v_personal text := public.new_personal_code();
   v_hid uuid;
   v_mid uuid;
 begin
@@ -324,8 +351,20 @@ begin
     end if;
     perform set_config('kupa.rejoin', 'on', true);
     update public.members set user_id = v_uid where id = v_mid;
+    -- With the second seat still free, the old device could walk back in with the old invite
+    -- code, so the invite code changes too. (With both seats taken, it simply gets household_full.)
+    if (select count(*) from public.members where household_id = v_hid) < 2 then
+      loop
+        begin
+          update public.households set invite_code = public.new_invite_code() where id = v_hid;
+          exit;
+        exception when unique_violation then
+          -- Collision with another household's code: try again.
+        end;
+      end loop;
+    end if;
     perform set_config('kupa.rejoin', 'off', true);
-    update public.member_secrets set personal_code = public.new_invite_code() where member_id = v_mid;
+    update public.member_secrets set personal_code = public.new_personal_code() where member_id = v_mid;
     return jsonb_build_object('household_id', v_hid, 'member_id', v_mid, 'rejoined', true);
   end if;
 
@@ -339,13 +378,15 @@ begin
   insert into public.members (household_id, user_id, display_name, color)
   values (v_hid, v_uid, v_name, 'violet')
   returning id into v_mid;
-  insert into public.member_secrets (member_id, personal_code) values (v_mid, public.new_invite_code());
+  insert into public.member_secrets (member_id, personal_code) values (v_mid, public.new_personal_code());
   return jsonb_build_object('household_id', v_hid, 'member_id', v_mid, 'rejoined', false);
 end $$;
 
 -- Only the two RPCs are callable by clients; helpers stay internal. Grants are explicit, so the
 -- script works whether or not the project exposes new functions automatically.
+revoke execute on function public.random_code(int) from public, anon, authenticated;
 revoke execute on function public.new_invite_code() from public, anon, authenticated;
+revoke execute on function public.new_personal_code() from public, anon, authenticated;
 revoke execute on function public.israel_today() from public, anon;
 grant execute on function public.israel_today() to authenticated;
 revoke execute on function public.create_household(text, int, int) from public, anon;

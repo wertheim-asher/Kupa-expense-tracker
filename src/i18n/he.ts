@@ -45,6 +45,7 @@ export const he = {
   'join.newToggle': 'מצטרפים בפעם הראשונה?',
   'join.personal': 'הקוד האישי שלך',
   'join.personalHelp': 'מופיע בהגדרות במכשיר הקודם. כך חוזרים למקום שלך עם כל ההיסטוריה.',
+  'join.personalLength': 'הקוד האישי צריך להיות 12 תווים.',
   'join.personalInvalid': 'הקוד האישי לא מתאים לקופה הזאת. כדאי לבדוק אותו שוב.',
   'join.rejoinSubmit': 'חזרה לקופה',
   'join.submit': 'הצטרפות',

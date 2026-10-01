@@ -12,6 +12,11 @@ const fieldClass =
   'block min-h-12 w-full rounded-xl border border-border bg-surface px-4 text-base aria-invalid:border-over'
 
 /** Accepts a typed code, a pasted code with spaces, or a whole invite link. */
+/** A personal code (12 characters), typed or pasted with or without the spaces it is shown with. */
+export function normalizePersonalCode(input: string): string {
+  return input.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12)
+}
+
 export function normalizeCode(input: string): string {
   const fromLink = /\/join\/([A-Za-z0-9 ]+)/.exec(input)?.[1] ?? input
   return fromLink.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
@@ -61,7 +66,7 @@ function Join({ onJoined }: { onJoined: () => void }) {
 
   const codeOk = code.length === 6
   const nameOk = name.trim().length >= 1 && name.trim().length <= LIMITS.maxNameLength
-  const personalOk = personal.length === 6
+  const personalOk = personal.length === 12
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -136,7 +141,7 @@ function Join({ onJoined }: { onJoined: () => void }) {
               ref={personalRef}
               id="join-personal"
               value={personal}
-              onChange={(e) => setPersonal(normalizeCode(e.target.value))}
+              onChange={(e) => setPersonal(normalizePersonalCode(e.target.value))}
               dir="ltr"
               autoCapitalize="characters"
               autoComplete="off"
@@ -145,10 +150,10 @@ function Join({ onJoined }: { onJoined: () => void }) {
               enterKeyHint="go"
               aria-invalid={(submitted && !personalOk) || undefined}
               aria-describedby="join-personal-help"
-              className={`${fieldClass} text-center text-2xl font-bold tracking-[0.3em] uppercase`}
+              className={`${fieldClass} text-center text-xl font-bold tracking-[0.15em] uppercase`}
             />
             <p id="join-personal-help" className={submitted && !personalOk ? 'text-sm font-medium text-over' : 'text-sm text-muted'}>
-              {submitted && !personalOk ? t('join.codeInvalid') : t('join.personalHelp')}
+              {submitted && !personalOk ? t('join.personalLength') : t('join.personalHelp')}
             </p>
           </div>
         ) : (

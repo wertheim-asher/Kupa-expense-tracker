@@ -116,7 +116,7 @@ export function Settings() {
               <div className="border-t border-border p-4 text-sm">
                 <p className="font-medium">
                   {t('settings.personalCode', { code: '' })}
-                  <bdi className="font-bold tracking-[0.2em]">{personalCode}</bdi>
+                  <bdi className="font-bold tracking-[0.1em]">{groupCode(personalCode)}</bdi>
                 </p>
                 <p className="mt-1 text-muted">{t('settings.personalHelp')}</p>
               </div>
@@ -239,6 +239,11 @@ export function Settings() {
       </main>
     </div>
   )
+}
+
+/** "ABCDEFGHJKMN" → "ABCD EFGH JKMN", easier to copy down. */
+function groupCode(code: string): string {
+  return code.replace(/(.{4})(?=.)/g, '$1 ')
 }
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
@@ -428,7 +433,7 @@ function DisconnectCard({
                   {personalCode && (
                     <p>
                       {t('settings.personalCode', { code: '' })}
-                      <bdi className="font-bold tracking-[0.2em]">{personalCode}</bdi>
+                      <bdi className="font-bold tracking-[0.1em]">{groupCode(personalCode)}</bdi>
                     </p>
                   )}
                 </>
