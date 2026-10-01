@@ -84,7 +84,18 @@ function Join({ onJoined }: { onJoined: () => void }) {
       return
     }
     onJoined()
-    repo.track('household_joined')
+    repo.track('household_joined', rejoin ? { rejoined: true } : {})
+    if (rejoin) {
+      // With the second seat free, taking a seat back also changes the invite code (so the old
+      // device cannot walk back in). Any link already sent to the partner stops working, so go
+      // straight to the invite screen to send the new one.
+      const household = await repo.getHousehold().catch(() => null)
+      if (household && household.inviteCode !== code) {
+        navigate('/invite', { replace: true, state: { justCreated: true, inviteChanged: true } })
+        await refresh()
+        return
+      }
+    }
     await refresh()
     navigate('/', { replace: true })
   }

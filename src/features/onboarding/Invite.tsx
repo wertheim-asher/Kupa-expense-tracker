@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { useReadyData } from '../../app/DataProvider.tsx'
 import { t } from '../../i18n/index.ts'
 import { Button } from '../../ui/Button.tsx'
@@ -7,6 +7,7 @@ import { InviteCode, ShareInviteButton } from './InviteShare.tsx'
 /** Right after creating a budget: invite the partner, or do it later from settings. */
 export function Invite() {
   const { household } = useReadyData()
+  const inviteChanged = (useLocation().state as { inviteChanged?: boolean } | null)?.inviteChanged === true
   const navigate = useNavigate()
 
   return (
@@ -14,6 +15,11 @@ export function Invite() {
       <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
         <h1 className="text-3xl font-bold">{t('invite.title')}</h1>
         <p className="max-w-xs text-lg text-muted">{t('invite.body')}</p>
+        {inviteChanged && (
+          <p role="status" className="rounded-2xl bg-warn-soft px-4 py-3 text-sm font-medium text-warn">
+            {t('invite.changed')}
+          </p>
+        )}
         <div className="mt-6 w-full rounded-2xl bg-surface px-6 py-6">
           <p className="text-sm text-muted">{t('invite.codeLabel')}</p>
           <InviteCode code={household.inviteCode} className="mt-1 text-5xl" />

@@ -43,6 +43,8 @@ export default defineConfig({
   ],
   test: {
     environment: 'jsdom',
+    // Unit and flow tests always run on on-device storage, even when .env.local points at Supabase.
+    env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '' },
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
   },
