@@ -138,6 +138,24 @@ function AddSheetBody({ startedAt }: { startedAt: number }) {
   return (
     <Sheet title={t('add.title')} titleId="add-title" onClose={close}>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
+        {/* Reads top to bottom in the order things are decided: when, how much, what (tapping a category saves). */}
+        <div className="pt-1">
+          <DateChips
+            value={day}
+            onChange={(next) => {
+              setDay(next)
+              setDateError(false)
+            }}
+            today={today}
+            disabled={saving}
+          />
+          {showDateError && (
+            <p id="add-date-error" role="alert" className="mt-1 text-center text-sm font-medium text-over">
+              {t('edit.dateInvalid')}
+            </p>
+          )}
+        </div>
+
         <div className="flex flex-1 flex-col justify-center py-2">
           <AmountDisplay raw={raw} shakeKey={shakeKey} className="text-5xl leading-tight" />
           <p
@@ -162,22 +180,6 @@ function AddSheetBody({ startedAt }: { startedAt: number }) {
 
         <div className="pb-2">
           <CategoryGrid onPick={(id) => void save(id)} inactive={amount === null || !dateOk} disabled={saving} />
-        </div>
-        <div className="pb-1">
-          <DateChips
-            value={day}
-            onChange={(next) => {
-              setDay(next)
-              setDateError(false)
-            }}
-            today={today}
-            disabled={saving}
-          />
-          {showDateError && (
-            <p id="add-date-error" role="alert" className="mt-1 text-center text-sm font-medium text-over">
-              {t('edit.dateInvalid')}
-            </p>
-          )}
         </div>
       </div>
       <Keypad onKey={dispatch} disabled={saving} />
