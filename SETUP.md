@@ -21,12 +21,18 @@ By default Supabase allows 30 anonymous sign-ins per hour from one network. A cl
 1. Left sidebar: **Authentication**, then **Rate Limits**.
 2. Set the limit for **anonymous users** (sign-ins per hour) to **500**, then click **Save**.
 
-## 4. Create the database
-1. Open the file on GitHub: https://github.com/wertheim-asher/Kupa-expense-tracker/blob/sync/supabase/migrations/0001_init.sql
-2. Click the **Copy raw file** button (two overlapping squares, top right of the file).
-3. In Supabase, left sidebar: **SQL Editor**, then **+ New query**.
-4. Paste, then click **Run** (or Cmd+Enter on the Mac, Ctrl+Enter on the PC).
-5. You should see **Success. No rows returned**. If you see an error, send Claude a screenshot.
+## 4. Create the database (two scripts, in order)
+Run each file once, in this order. For each one:
+1. Open it on GitHub, then click the **Copy raw file** button (two overlapping squares, top right of the file).
+2. In Supabase, left sidebar: **SQL Editor**, then **+ New query**.
+3. Paste, then click **Run** (or Cmd+Enter on the Mac, Ctrl+Enter on the PC).
+4. You should see **Success. No rows returned**. If you see an error, send Claude a screenshot.
+
+The files:
+1. https://github.com/wertheim-asher/Kupa-expense-tracker/blob/main/supabase/migrations/0001_init.sql (tables, security, create and join)
+2. https://github.com/wertheim-asher/Kupa-expense-tracker/blob/main/supabase/migrations/0002_harder_codes.sql (12-character personal codes; a clean cut-off after someone moves to a new phone)
+
+(Until partner sync is merged, the files live on the `sync` branch: replace `blob/main` with `blob/sync` in the links.)
 
 ## 5. Check realtime is on
 1. Left sidebar: **Database**, then **Publications**.
@@ -42,6 +48,9 @@ By default Supabase allows 30 anonymous sign-ins per hour from one network. A cl
 
 ## Before the presentation
 Free Supabase projects pause after a week without activity. Open the Supabase dashboard the day before the demo so the project is awake.
+
+## Check the security rules (optional, for developers)
+`npm run test:rls` runs 34 checks against the real project with fresh anonymous users: one household cannot read or change another's data, a partner cannot act as the other, a name alone never takes a seat, personal codes stay private and change after use. It leaves a few test households named "rls-test-…" in the database, which is harmless.
 
 ## For developers
 - Local development: put the two values in `.env.local` (never committed):
