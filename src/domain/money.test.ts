@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   agorotToDecimalString,
+  exceedsMax,
   formatMoney,
   formatTyped,
   normalizeTypedAmount,
@@ -38,6 +39,18 @@ describe('parseAmount (SPEC section 6)', () => {
     ['99999.99', 9_999_999],
   ])('edge "%s" → %s', (text, expected) => {
     expect(parseAmount(text)).toBe(expected)
+  })
+})
+
+describe('exceedsMax', () => {
+  it.each<[string, boolean]>([
+    ['100000', false],
+    ['100000.01', true],
+    ['999999', true],
+    ['0.', false],
+    ['', false],
+  ])('"%s" → %s', (text, expected) => {
+    expect(exceedsMax(text)).toBe(expected)
   })
 })
 

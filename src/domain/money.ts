@@ -10,14 +10,26 @@ const AMOUNT_RE = /^(\d+)(?:\.(\d{0,2}))?$/
  * is zero, or is above ₪100,000.
  */
 export function parseAmount(text: string): number | null {
+  const agorot = toAgorot(text)
+  if (agorot === null || agorot <= 0 || agorot > LIMITS.maxAmountAgorot) return null
+  return agorot
+}
+
+/** True when well-formed text is above ₪100,000 (drives the "up to" hint). */
+export function exceedsMax(text: string): boolean {
+  const agorot = toAgorot(text)
+  return agorot !== null && agorot > LIMITS.maxAmountAgorot
+}
+
+/** Well-formed text (max 6 integer digits, max 2 decimals) to agorot, no range check. */
+function toAgorot(text: string): number | null {
   const m = AMOUNT_RE.exec(text)
   if (!m) return null
   const whole = m[1]
   if (whole.replace(/^0+/, '').length > LIMITS.maxIntegerDigits) return null
   const frac = (m[2] ?? '').padEnd(2, '0')
   const agorot = Number(whole) * 100 + Number(frac)
-  if (!Number.isSafeInteger(agorot) || agorot <= 0 || agorot > LIMITS.maxAmountAgorot) return null
-  return agorot
+  return Number.isSafeInteger(agorot) ? agorot : null
 }
 
 export function isValidAmount(agorot: number): boolean {
@@ -83,12 +95,23 @@ export function agorotToDecimalString(agorot: number): string {
 export function formatTyped(raw: string, locale: string = LOCALE): string {
   const [whole, frac] = raw.split('.')
   const parts = currencyFormat(locale, 0).formatToParts(Number(whole || '0'))
+  let firstNumeric = -1
   let lastNumeric = -1
   parts.forEach((p, i) => {
-    if (p.type === 'integer' || p.type === 'group') lastNumeric = i
+    if (p.type === 'integer' || p.type === 'group') {
+      if (firstNumeric === -1) firstNumeric = i
+      lastNumeric = i
+    }
   })
   const decimalSep = currencyFormat(locale, 2).formatToParts(1.5).find((p) => p.type === 'decimal')?.value ?? '.'
+  // The number sits in a left-to-right isolate (LRI ... PDI), so a trailing "." stays after the digits in RTL.
   return parts
-    .map((p, i) => (i === lastNumeric && frac !== undefined ? `${p.value}${decimalSep}${frac}` : p.value))
+    .map((p, i) => {
+      let value = p.value
+      if (i === lastNumeric && frac !== undefined) value = `${value}${decimalSep}${frac}`
+      if (i === firstNumeric) value = `⁦${value}`
+      if (i === lastNumeric) value = `${value}⁩`
+      return value
+    })
     .join('')
 }

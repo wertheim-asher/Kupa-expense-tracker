@@ -122,6 +122,9 @@
   input[type='date'] {
     min-height: 48px;
   }
+  input[type='date']::-webkit-date-and-time-value {
+    text-align: start;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -14,7 +14,6 @@ export const he = {
   'welcome.create': 'פתיחת קופה משותפת', // SPEC
   'welcome.join': 'הצטרפות עם קוד', // SPEC (hidden in the fast lane)
   'welcome.demo': 'צפייה בדמו', // SPEC
-  'welcome.privacy': 'בלי חיבור לבנק. הכול נשמר במכשיר הזה.',
 
   'create.title': 'פתיחת קופה משותפת',
   'create.name': 'איך קוראים לך?', // SPEC
@@ -98,7 +97,6 @@ export const he = {
   'settings.disconnectYes': 'כן, לנתק ולמחוק',
 
   'demo.banner': 'מצב הדגמה', // SPEC
-  'demo.exit': 'יציאה',
 } as const
 
 export type MessageKey = keyof typeof he

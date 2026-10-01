@@ -5,9 +5,13 @@ import '@fontsource/rubik/500.css'
 import '@fontsource/rubik/700.css'
 import './index.css'
 import { App } from './app/App.tsx'
+import { initialMode } from './data/mode.ts'
+
+// Read ?demo=1 / ?demo=0 before the router sees the URL.
+const mode = initialMode()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <App initialMode={mode} />
   </StrictMode>,
 )
