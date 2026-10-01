@@ -20,7 +20,7 @@ import { useToast } from '../../ui/Toast.tsx'
 
 export function EditSheet() {
   const { id } = useParams()
-  const { expenses } = useReadyData()
+  const { expenses, repo } = useReadyData()
   const navigate = useNavigate()
   const location = useLocation()
   const toast = useToast()
@@ -35,7 +35,9 @@ export function EditSheet() {
   const closeRef = useRef(close)
   closeRef.current = close
 
-  // The expense left the current cycle or was deleted somewhere else: close with a short message.
+  // The expense vanished from the current cycle while open: close, then say why. It was either
+  // deleted somewhere else, or it still exists but now belongs to another cycle (its date moved
+  // in another tab, the cycle day changed, or the cycle rolled over at midnight).
   useEffect(() => {
     if (expense) {
       seen.current = true
@@ -43,9 +45,16 @@ export function EditSheet() {
     }
     if (done.current) return
     done.current = true
-    if (seen.current) toast.show({ message: t('toast.goneElsewhere') })
     closeRef.current()
-  }, [expense, toast])
+    if (!seen.current || !id) return
+    const today = todayInIsrael()
+    repo
+      .listExpenses({ from: addDays(today, -LIMITS.maxPastDays - 31), toExclusive: addDays(today, 1) })
+      .then((all) => toast.show({ message: t(all.some((e) => e.id === id) ? 'toast.leftCycle' : 'toast.goneElsewhere') }))
+      .catch(() => {
+        // Unknown either way; the sheet is closed and the list is current, so say nothing rather than guess.
+      })
+  }, [expense, toast, repo, id])
 
   if (!expense) return null
   return <EditForm expense={expense} onClose={close} setDone={(value) => (done.current = value)} />
@@ -63,6 +72,9 @@ function EditForm({
 }) {
   const { repo, run, highlight, members } = useReadyData()
   const toast = useToast()
+  // What the form opened with. Diffing against this (not the live expense) means a change
+  // made in another tab to a field the user did not touch is never reverted.
+  const [original] = useState(expense)
   const [raw, dispatch] = useReducer(keypadReducer, agorotToKeypad(expense.amountAgorot))
   const [category, setCategory] = useState<CategoryId>(expense.category)
   const [date, setDate] = useState(expense.spentOn)
@@ -84,15 +96,15 @@ function EditForm({
     if (!dateOk) return
     const patch: ExpensePatch = {}
     const fields: string[] = []
-    if (amount !== expense.amountAgorot) {
+    if (amount !== original.amountAgorot) {
       patch.amountAgorot = amount
       fields.push('amount')
     }
-    if (category !== expense.category) {
+    if (category !== original.category) {
       patch.category = category
       fields.push('category')
     }
-    if (date !== expense.spentOn) {
+    if (date !== original.spentOn) {
       patch.spentOn = date
       fields.push('spent_on')
     }

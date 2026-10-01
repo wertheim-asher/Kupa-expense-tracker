@@ -17,7 +17,7 @@ export function Welcome() {
         <p className="mt-3 max-w-xs text-xl text-muted">{t('welcome.tagline')}</p>
       </div>
       <div className="flex flex-col gap-2">
-        <Button className="min-h-14 w-full text-lg" onClick={() => navigate('/create')}>
+        <Button className="min-h-14 w-full text-lg" onClick={() => navigate('/create', { state: { fromApp: true } })}>
           {t('welcome.create')}
         </Button>
         <Button

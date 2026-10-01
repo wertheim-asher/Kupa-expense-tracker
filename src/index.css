@@ -118,6 +118,11 @@
     outline: 3px solid var(--primary);
     outline-offset: 2px;
   }
+  /* Browser default placeholder grey is about 3.3:1 on white; muted passes AA. */
+  ::placeholder {
+    color: var(--muted);
+    opacity: 1;
+  }
   /* Native date input: keep the picker inside the column. */
   input[type='date'] {
     min-height: 48px;
@@ -135,5 +140,10 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  /* A tint is not motion: keep the "new row" cue as a static color for its 1.5s. */
+  .animate-highlight {
+    animation: none !important;
+    background-color: var(--primary-soft);
   }
 }

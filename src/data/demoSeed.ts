@@ -96,7 +96,10 @@ interface Draft {
   agorot: number
 }
 
-/** n expenses following MIX, scaled so they add up to exactly `targetAgorot` (whole shekels). */
+/**
+ * n expenses following MIX, scaled so they add up to exactly `targetAgorot` (whole shekels),
+ * with every amount kept inside its category's range.
+ */
 function draftAmounts(n: number, targetAgorot: number, rand: () => number): Draft[] {
   const counts = allocate(
     n,
@@ -106,17 +109,36 @@ function draftAmounts(n: number, targetAgorot: number, rand: () => number): Draf
     MIX.flatMap((c, i) => Array.from({ length: counts[i] }, () => c)),
     rand,
   )
-  const drafts = categories.map((c) => ({ category: c.id, agorot: int(rand, c.min, c.max) * 100 }))
+  const drafts = categories.map((c) => ({ mix: c, agorot: int(rand, c.min, c.max) * 100 }))
   const sum = drafts.reduce((s, d) => s + d.agorot, 0)
   const target = Math.round(targetAgorot / 100) * 100
   const factor = target / sum
-  for (const d of drafts) d.agorot = Math.max(100, Math.round((d.agorot * factor) / 100) * 100)
-  // Put the rounding remainder on the largest expense so the total is exact.
-  const diff = target - drafts.reduce((s, d) => s + d.agorot, 0)
-  const largest = drafts.reduce((best, d) => (d.agorot > best.agorot ? d : best), drafts[0])
-  largest.agorot = Math.max(100, largest.agorot + diff)
-  return drafts
+  const clamp = (d: (typeof drafts)[number], agorot: number) => Math.min(d.mix.max * 100, Math.max(d.mix.min * 100, agorot))
+  for (const d of drafts) d.agorot = clamp(d, Math.round((d.agorot * factor) / 100) * 100)
+  // Spread what is left, one shekel at a time, over expenses that still have room in their range.
+  let diff = target - drafts.reduce((s, d) => s + d.agorot, 0)
+  const step = diff > 0 ? 100 : -100
+  while (diff !== 0) {
+    let moved = false
+    for (const d of drafts) {
+      if (diff === 0) break
+      const next = clamp(d, d.agorot + step)
+      if (next !== d.agorot) {
+        d.agorot = next
+        diff -= step
+        moved = true
+      }
+    }
+    if (!moved) break
+  }
+  return drafts.map((d) => ({ category: d.mix.id, agorot: d.agorot }))
 }
+
+/** Category ranges in agorot, for tests. */
+export const CATEGORY_RANGES = Object.fromEntries(MIX.map((c) => [c.id, { min: c.min * 100, max: c.max * 100 }])) as Record<
+  CategoryId,
+  { min: number; max: number }
+>
 
 function buildExpenses(
   drafts: Draft[],

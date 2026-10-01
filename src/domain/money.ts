@@ -70,9 +70,18 @@ export function formatMoney(agorot: number, locale: string = LOCALE): string {
   return currencyFormat(locale, whole ? 0 : 2).format(agorot / 100)
 }
 
-/** Rounded to the nearest shekel (home big number). */
+/** Rounded to the nearest shekel, halves away from zero, so -₪1.50 and ₪1.50 round alike. */
 export function roundToShekel(agorot: number): number {
-  return Math.round(agorot / 100) * 100
+  return Math.sign(agorot) * Math.round(Math.abs(agorot) / 100) * 100 || 0
+}
+
+/**
+ * The home big number in whole shekels: nearest shekel, except that any overage
+ * shows as at least ₪1, so the screen never says "over budget by ₪0".
+ */
+export function leftForDisplay(leftAgorot: number): number {
+  const shekels = roundToShekel(leftAgorot) / 100
+  return leftAgorot < 0 ? Math.min(shekels, -1) : shekels
 }
 
 /** Floor of max(left, 0) / daysLeft, in whole shekels, returned as agorot. */

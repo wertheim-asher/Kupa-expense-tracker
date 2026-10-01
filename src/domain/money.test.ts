@@ -4,6 +4,7 @@ import {
   exceedsMax,
   formatMoney,
   formatTyped,
+  leftForDisplay,
   normalizeTypedAmount,
   parseAmount,
   perDayAgorot,
@@ -76,10 +77,23 @@ describe('formatMoney', () => {
 })
 
 describe('home number helpers', () => {
-  it('rounds the big number to the nearest shekel', () => {
+  it('rounds the big number to the nearest shekel, halves away from zero', () => {
     expect(roundToShekel(124_049)).toBe(124_000)
     expect(roundToShekel(124_050)).toBe(124_100)
     expect(roundToShekel(-23_040)).toBe(-23_000)
+    expect(roundToShekel(-150)).toBe(-200)
+    expect(roundToShekel(150)).toBe(200)
+    expect(Object.is(roundToShekel(-30), 0)).toBe(true)
+  })
+
+  it('never shows "over budget by ₪0"', () => {
+    expect(leftForDisplay(-30)).toBe(-1)
+    expect(leftForDisplay(-1)).toBe(-1)
+    expect(leftForDisplay(-150)).toBe(-2)
+    expect(leftForDisplay(-23_040)).toBe(-230)
+    expect(leftForDisplay(0)).toBe(0)
+    expect(leftForDisplay(30)).toBe(0)
+    expect(leftForDisplay(124_000)).toBe(1240)
   })
 
   it('per day is floor(max(left, 0) / daysLeft) in whole shekels', () => {

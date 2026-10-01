@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { addDays, cycleFor, isInCycle, shiftCycle } from '../domain/cycle.ts'
-import { buildDemoSeed, currentTargetAgorot, DEMO, israelTimeToIso, mulberry32 } from './demoSeed.ts'
+import { buildDemoSeed, CATEGORY_RANGES, currentTargetAgorot, DEMO, israelTimeToIso, mulberry32 } from './demoSeed.ts'
 
 const NOW = (today: string) => new Date(israelTimeToIso(today, 12, 0))
 
@@ -81,7 +81,8 @@ describe('buildDemoSeed', () => {
     const now = NOW(today).toISOString()
     for (const e of seed.expenses) {
       expect(Number.isInteger(e.amountAgorot)).toBe(true)
-      expect(e.amountAgorot).toBeGreaterThan(0)
+      expect(e.amountAgorot).toBeGreaterThanOrEqual(CATEGORY_RANGES[e.category].min)
+      expect(e.amountAgorot).toBeLessThanOrEqual(CATEGORY_RANGES[e.category].max)
       expect(e.logDurationMs).toBeGreaterThanOrEqual(2500)
       expect(e.logDurationMs).toBeLessThanOrEqual(9000)
       expect(e.createdAt < now).toBe(true)

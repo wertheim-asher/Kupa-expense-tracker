@@ -1,8 +1,9 @@
 import { ChevronLeft, Download, LogOut, Pencil, RotateCcw, Unplug } from 'lucide-react'
 import { useId, useState, type FormEvent, type ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import { useReadyData } from '../../app/DataProvider.tsx'
 import { useMode } from '../../app/ModeContext.tsx'
+import { useBack } from '../../app/useBack.ts'
 import { csvFileName, downloadText, eventsCsv, expensesCsv } from '../../analytics/exportCsv.ts'
 import { APP, LIMITS } from '../../config.ts'
 import { todayInIsrael } from '../../domain/cycle.ts'
@@ -24,6 +25,7 @@ export function Settings() {
   const data = useReadyData()
   const { mode, setMode } = useMode()
   const navigate = useNavigate()
+  const back = useBack('/')
   const toast = useToast()
   const { repo, run, household, members, session } = data
 
@@ -44,9 +46,14 @@ export function Settings() {
   return (
     <div className="flex flex-1 flex-col">
       <header className="flex items-center gap-1 px-2 pt-2">
-        <Link to="/" aria-label={t('common.back')} className="grid size-12 place-items-center rounded-full text-muted active:bg-surface">
+        <button
+          type="button"
+          onClick={back}
+          aria-label={t('common.back')}
+          className="grid size-12 place-items-center rounded-full text-muted active:bg-surface"
+        >
           <ChevronLeft size={26} aria-hidden="true" className="rtl:-scale-x-100" />
-        </Link>
+        </button>
         <h1 className="text-2xl font-bold">{t('settings.title')}</h1>
       </header>
 
@@ -146,7 +153,7 @@ export function Settings() {
                   await repo.resetDevice()
                   await data.refresh()
                   toast.show({ message: t('settings.resetDemoDone') })
-                  navigate('/')
+                  navigate('/', { replace: true })
                 }}
               >
                 <RotateCcw size={20} aria-hidden="true" />

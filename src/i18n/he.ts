@@ -58,6 +58,7 @@ export const he = {
   'toast.updated': 'השינויים נשמרו',
   'toast.deleted': 'ההוצאה נמחקה',
   'toast.goneElsewhere': 'ההוצאה הזאת נמחקה במקום אחר',
+  'toast.leftCycle': 'ההוצאה הזאת כבר לא במחזור הנוכחי',
   'toast.actionFailed': 'משהו לא הצליח. לנסות שוב?',
 
   'error.save': 'לא הצלחנו לשמור. לנסות שוב?', // SPEC

@@ -34,6 +34,8 @@ export default defineConfig({
           '**/*.{js,css,html,svg,png}',
           '**/rubik-hebrew-*-normal-*.woff2',
           '**/rubik-latin-[0-9]*-normal-*.woff2',
+          // ₪ (U+20AA) is drawn from the latin-ext face, so offline launches need it too.
+          '**/rubik-latin-ext-*-normal-*.woff2',
         ],
         navigateFallback: '/index.html',
       },

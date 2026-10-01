@@ -4,7 +4,7 @@ import { useReadyData } from '../../app/DataProvider.tsx'
 import { TIMING } from '../../config.ts'
 import { CATEGORY_EMOJI } from '../../domain/categories.ts'
 import { daysLeft as countDaysLeft } from '../../domain/cycle.ts'
-import { perDayAgorot, roundToShekel } from '../../domain/money.ts'
+import { leftForDisplay, perDayAgorot } from '../../domain/money.ts'
 import type { Expense, IsoDate, Member } from '../../domain/types.ts'
 import { cycleLabel, dayLabel } from '../../i18n/dates.ts'
 import { around, categoryName, t, tx } from '../../i18n/index.ts'
@@ -40,6 +40,7 @@ export function Home() {
           <h1 className="text-[15px] font-medium text-muted">{cycleLabel(cycle)}</h1>
           <Link
             to="/settings"
+            state={{ fromApp: true }}
             aria-label={t('home.settings')}
             className="grid size-12 place-items-center rounded-full text-muted active:bg-surface"
           >
@@ -88,10 +89,10 @@ function Summary({
   budgetAgorot: number
   daysLeft: number
 }) {
-  const shown = useAnimatedNumber(roundToShekel(leftAgorot) / 100, TIMING.numberAnimMs)
+  const shown = useAnimatedNumber(leftForDisplay(leftAgorot), TIMING.numberAnimMs)
   const isOver = leftAgorot < 0
   // Follows the animated value, so the text flips when the count crosses zero.
-  const over = shown < 0 || (shown === 0 && isOver)
+  const over = shown < 0
   const { before, after } = around(over ? 'home.over' : 'home.left', 'amount')
 
   return (
@@ -155,7 +156,8 @@ function ExpenseList({
                   to={`/expense/${e.id}`}
                   state={{ fromApp: true }}
                   className={cls(
-                    'flex min-h-16 items-center gap-3 px-4 py-3 active:bg-bg',
+                    // Inset focus ring: the list's overflow-hidden would clip an outer one.
+                    'flex min-h-16 items-center gap-3 px-4 py-3 active:bg-bg focus-visible:-outline-offset-3',
                     highlightIds.has(e.id) && 'animate-highlight',
                   )}
                 >

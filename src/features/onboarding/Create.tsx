@@ -1,7 +1,8 @@
 import { ChevronLeft } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import { useData } from '../../app/DataProvider.tsx'
+import { useBack } from '../../app/useBack.ts'
 import { budgetBucket } from '../../analytics/track.ts'
 import { LIMITS } from '../../config.ts'
 import { normalizeTypedAmount, parseAmount } from '../../domain/money.ts'
@@ -17,6 +18,7 @@ const fieldClass =
 // One screen, three fields. The invite step is skipped in the fast lane.
 export function Create() {
   const navigate = useNavigate()
+  const back = useBack('/welcome')
   const { repo, refresh } = useData()
   const [name, setName] = useState('')
   const [budget, setBudget] = useState('')
@@ -54,13 +56,14 @@ export function Create() {
   return (
     <main className="flex flex-1 flex-col px-4 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
       <header className="flex items-center gap-1">
-        <Link
-          to="/welcome"
+        <button
+          type="button"
+          onClick={back}
           aria-label={t('common.back')}
           className="grid size-12 place-items-center rounded-full text-muted active:bg-surface"
         >
           <ChevronLeft size={26} aria-hidden="true" className="rtl:-scale-x-100" />
-        </Link>
+        </button>
         <h1 className="text-2xl font-bold">{t('create.title')}</h1>
       </header>
 
