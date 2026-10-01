@@ -2,7 +2,8 @@
 
 A shared budget app for couples, built as a Product Management course MVP. Both partners log expenses by hand in seconds and always see one number: how much is left until the next credit card billing cycle.
 
-- **Live:** the Netlify URL is added here after the first deploy.
+- **Live:** https://kupa-expense-tracker.netlify.app
+- **Code:** https://github.com/wertheim-asher/Kupa-expense-tracker (private)
 - **Demo:** add `?demo=1` to the URL (or tap "צפייה בדמו" on the welcome screen). `?demo=0` or "יציאה מהדמו" in settings returns to the real app.
 
 This is the **fast-lane build**: data is stored only in this browser (`localStorage`), one device, no accounts and no sync yet. See [SPEC.md](SPEC.md) for the full plan and [BUILD_LOG.md](BUILD_LOG.md) for every decision and cut.
