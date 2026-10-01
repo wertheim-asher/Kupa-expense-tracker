@@ -46,6 +46,12 @@ export type RepoErrorCode =
   | 'not_found'
   | 'unsupported'
   | 'storage_failed'
+  | 'code_not_found'
+  | 'household_full'
+  /** No connection, or the server could not be reached. */
+  | 'network'
+  /** Anything else the server reported. */
+  | 'server'
 
 export class RepoError extends Error {
   readonly code: RepoErrorCode

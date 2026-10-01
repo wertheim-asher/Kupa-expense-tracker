@@ -15,6 +15,8 @@ import { Button } from '../../ui/Button.tsx'
 import { MemberChip } from '../../ui/MemberChip.tsx'
 import { Money } from '../../ui/Money.tsx'
 import { useToast } from '../../ui/Toast.tsx'
+import { syncEnabled } from '../../data/supabase.ts'
+import { InviteCode, ShareInviteButton } from '../onboarding/InviteShare.tsx'
 
 const DAYS = Array.from({ length: LIMITS.maxCycleDay - LIMITS.minCycleDay + 1 }, (_, i) => i + LIMITS.minCycleDay)
 
@@ -81,6 +83,21 @@ export function Settings() {
             ))}
           </ul>
         </Card>
+
+        {syncEnabled && mode !== 'demo' && (
+          <Card title={t('settings.invite')}>
+            {members.length < 2 ? (
+              <div className="flex flex-col items-center gap-3 p-4 text-center">
+                <p className="text-sm text-muted">{t('invite.codeLabel')}</p>
+                <InviteCode code={household.inviteCode} className="text-3xl" />
+                <ShareInviteButton code={household.inviteCode} className="w-full" />
+              </div>
+            ) : (
+              // Both seats taken: the code stays visible, small, for getting back in from another device.
+              <p className="p-4 text-sm text-muted">{t('invite.recovery', { code: household.inviteCode })}</p>
+            )}
+          </Card>
+        )}
 
         <Card title={t('settings.budgetSection')}>
           <div className="flex flex-col gap-5 p-4">
@@ -180,6 +197,7 @@ export function Settings() {
           </Card>
         ) : (
           <DisconnectCard
+            inviteCode={syncEnabled ? household.inviteCode : null}
             onConfirm={async () => {
               await repo.resetDevice()
               await data.refresh()
@@ -353,7 +371,11 @@ function BudgetForm({ budgetAgorot, onSave }: { budgetAgorot: number; onSave: (a
   )
 }
 
-function DisconnectCard({ onConfirm }: { onConfirm: () => Promise<void> }) {
+/**
+ * On-device only: disconnecting deletes this device's data. With partner sync: the data stays on the
+ * server, and the invite code (shown in the warning) is the way back.
+ */
+function DisconnectCard({ onConfirm, inviteCode }: { onConfirm: () => Promise<void>; inviteCode: string | null }) {
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   return (
@@ -361,9 +383,19 @@ function DisconnectCard({ onConfirm }: { onConfirm: () => Promise<void> }) {
       <div className="flex flex-col gap-3 p-4">
         {confirming ? (
           <div role="alertdialog" aria-labelledby="disconnect-warn" className="flex flex-col gap-3">
-            <p id="disconnect-warn" className="rounded-xl bg-over-soft px-4 py-3 text-sm font-medium text-over">
-              {t('settings.disconnectWarnLocal')}
-            </p>
+            <div id="disconnect-warn" className="rounded-xl bg-over-soft px-4 py-3 text-sm font-medium text-over">
+              {inviteCode ? (
+                <>
+                  <p>{t('settings.disconnectWarn')}</p>
+                  <p className="mt-2">
+                    {t('settings.disconnectCode', { code: '' })}
+                    <bdi className="font-bold tracking-[0.2em]">{inviteCode}</bdi>
+                  </p>
+                </>
+              ) : (
+                <p>{t('settings.disconnectWarnLocal')}</p>
+              )}
+            </div>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setConfirming(false)} disabled={busy}>
                 {t('common.cancel')}
@@ -377,7 +409,7 @@ function DisconnectCard({ onConfirm }: { onConfirm: () => Promise<void> }) {
                   await onConfirm()
                 }}
               >
-                {t('settings.disconnectYes')}
+                {inviteCode ? t('settings.disconnectSyncYes') : t('settings.disconnectYes')}
               </Button>
             </div>
           </div>

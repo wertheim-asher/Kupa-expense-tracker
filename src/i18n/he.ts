@@ -13,7 +13,7 @@ export const he = {
 
   'welcome.tagline': 'תמיד יודעים כמה נשאר עד החיוב הבא', // SPEC
   'welcome.create': 'פתיחת קופה משותפת', // SPEC
-  'welcome.join': 'הצטרפות עם קוד', // SPEC (hidden in the fast lane)
+  'welcome.join': 'הצטרפות עם קוד', // SPEC (shown only when partner sync is on)
   'welcome.demo': 'צפייה בדמו', // SPEC
 
   'create.title': 'פתיחת קופה משותפת',
@@ -27,6 +27,28 @@ export const he = {
   'create.nameRequired': 'צריך למלא שם.',
   'create.budgetInvalid': 'מקלידים סכום גדול מאפס ועד {max}.',
   'create.error': 'לא הצלחנו ליצור את הקופה. לנסות שוב?',
+  'error.network': 'אין חיבור לאינטרנט. מנסים שוב כשהחיבור חוזר.',
+
+  'invite.title': 'עכשיו מזמינים את בן או בת הזוג', // SPEC
+  'invite.body': 'שולחים את הקישור, ומי שנכנס דרכו מצטרף לקופה הזאת.',
+  'invite.codeLabel': 'קוד ההזמנה',
+  'invite.share': 'שליחת הזמנה', // SPEC
+  'invite.later': 'אעשה את זה אחר כך', // SPEC
+  'invite.shareText': 'הצטרפו לקופה המשותפת שלנו: {link}', // SPEC
+  'invite.copied': 'הקישור הועתק. אפשר להדביק אותו בהודעה.',
+  'invite.recovery': 'קוד ההזמנה: {code}. שומרים אותו כדי לחזור לקופה ממכשיר אחר.',
+
+  'join.title': 'הצטרפות לקופה משותפת',
+  'join.code': 'קוד הזמנה', // SPEC
+  'join.codeHelp': '6 תווים, מהקישור או מההודעה שקיבלתם',
+  'join.rejoinHint': 'כבר הייתם בקופה הזאת ממכשיר אחר? מצטרפים עם אותו שם כדי לחזור למקום שלכם.',
+  'join.submit': 'הצטרפות',
+  'join.codeInvalid': 'הקוד צריך להיות 6 תווים.',
+  'join.notFound': 'הקוד לא נמצא. כדאי לבדוק אותו שוב.', // SPEC
+  'join.full': 'בקופה הזאת כבר יש שני אנשים.', // SPEC
+  'join.already': 'המכשיר הזה כבר מחובר לקופה.', // SPEC
+  'join.goHome': 'למסך הבית',
+  'join.error': 'לא הצלחנו להצטרף. לנסות שוב?',
 
   'home.cycleLabel': '{start} עד {end}',
   'home.left': 'נשארו {amount} במחזור הזה', // SPEC
@@ -105,6 +127,10 @@ export const he = {
   'settings.disconnectWarnLocal':
     'כל ההוצאות שנשמרו במכשיר הזה יימחקו, ואי אפשר יהיה לשחזר אותן. כדאי להוריד אותן קודם כקובץ CSV.',
   'settings.disconnectYes': 'כן, לנתק ולמחוק',
+  'settings.invite': 'הזמנה לקופה',
+  'settings.disconnectWarn': 'כדאי לשמור את קוד ההזמנה לפני. בלעדיו אי אפשר לחזור.', // SPEC
+  'settings.disconnectCode': 'קוד ההזמנה: {code}',
+  'settings.disconnectSyncYes': 'כן, לנתק',
 
   'demo.banner': 'מצב הדגמה', // SPEC
 } as const

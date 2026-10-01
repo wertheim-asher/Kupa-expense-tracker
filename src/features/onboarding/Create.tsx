@@ -3,6 +3,7 @@ import { useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { useData } from '../../app/DataProvider.tsx'
 import { useBack } from '../../app/useBack.ts'
+import { syncEnabled } from '../../data/supabase.ts'
 import { budgetBucket } from '../../analytics/track.ts'
 import { LIMITS } from '../../config.ts'
 import { normalizeTypedAmount, parseAmount } from '../../domain/money.ts'
@@ -49,6 +50,13 @@ export function Create() {
       return
     }
     repo.track('household_created', { cycle_start_day: cycleDay, budget_bucket: budgetBucket(budgetAgorot) })
+    if (syncEnabled) {
+      // Next step: invite the partner (also possible later in settings). Leave this screen before
+      // the reload, so the signed-out guard here cannot redirect home first.
+      navigate('/invite', { replace: true, state: { justCreated: true } })
+      await refresh()
+      return
+    }
     await refresh()
     navigate('/', { replace: true })
   }
