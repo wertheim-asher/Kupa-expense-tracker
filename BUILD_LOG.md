@@ -55,7 +55,7 @@
 | Date | Who | Feedback | Action |
 |---|---|---|---|
 | 2026-10-01 | Asher | The member initial chips (נ for Noa, ד for Dan) don't line up from row to row in the expense list. | The amount now sits in a fixed-width slot (6.5rem, text aligned to the end), so every chip lands in the same column. Measured in headless Chrome: all 28 demo rows, including a worst-case ₪99,999.99, put the chip at the same x position at 360 and 390px, with no overlap. |
-| 2026-10-01 | Asher | Asked why the project is not on GitHub. | The spec asks for a local git repo with a commit per phase, but never for a remote, and Netlify CLI can deploy without one; I should have flagged that gap. Offered to create a GitHub repo. |
+| 2026-10-01 | Asher | Asked why the project is not on GitHub. | The spec asks for a local git repo with a commit per phase, but never for a remote, and Netlify CLI can deploy without one; I should have flagged that gap. Asher chose a private repo: created https://github.com/wertheim-asher/kupa and pushed all commits. Each phase commit is pushed from now on. |
 
 ## Edge case results
 | # | Case | Result |
