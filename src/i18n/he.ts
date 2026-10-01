@@ -3,6 +3,7 @@
 
 export const he = {
   'app.footer': '{name} · גרסה {version} · MVP של פרויקט בקורס',
+  'app.copyright': '© {year} {owner}. כל הזכויות שמורות.',
   'common.loading': 'בטעינה…',
   'common.retry': 'לנסות שוב',
   'common.cancel': 'ביטול',
@@ -35,7 +36,7 @@ export const he = {
   'home.lastDay': 'יום אחרון במחזור', // SPEC
   'home.spentOf': 'הוצאתם {spent} מתוך {budget}', // SPEC
   'home.progress': 'התקציב נוצל ב-{percent}%',
-  'home.empty': 'עוד אין הוצאות במחזור הזה. לוחצים על + כדי להוסיף את הראשונה.', // SPEC
+  'home.empty': 'עוד אין הוצאות במחזור הזה. לוחצים על + כדי להוסיף את ההוצאה הראשונה.', // SPEC, wording changed by Asher
   'home.today': 'היום', // SPEC
   'home.yesterday': 'אתמול', // SPEC
   'home.listTitle': 'ההוצאות במחזור',
@@ -49,6 +50,10 @@ export const he = {
   'add.tooMuch': 'אפשר עד {max}',
   'add.amount': 'סכום',
   'add.categories': 'קטגוריה',
+  'add.date': 'תאריך ההוצאה',
+  'add.dateToday': 'היום',
+  'add.dateYesterday': 'אתמול',
+  'add.dateOther': 'תאריך אחר',
   'key.backspace': 'מחיקת ספרה',
   'key.dot': 'נקודה עשרונית',
 
@@ -86,7 +91,8 @@ export const he = {
   'settings.saved': 'נשמר',
   'settings.export': 'ייצוא נתונים',
   'settings.exportExpenses': 'הורדת הוצאות (CSV)',
-  'settings.exportEvents': 'הורדת אירועים (CSV)',
+  'settings.exportEvents': 'הורדת נתוני שימוש (CSV)',
+  'settings.exportHelp': 'הוצאות: כל מה שנרשם, כולל מה שנמחק. נתוני שימוש: מתי ואיך משתמשים באפליקציה, בלי סכומים ובלי שמות.',
   'settings.demo': 'מצב הדגמה',
   'settings.resetDemo': 'איפוס הדמו',
   'settings.resetDemoDone': 'הדמו חזר להתחלה',

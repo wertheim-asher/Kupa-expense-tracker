@@ -7,6 +7,7 @@ import { todayInIsrael } from '../../domain/cycle.ts'
 import { keypadReducer } from '../../domain/keypad.ts'
 import { exceedsMax, parseAmount } from '../../domain/money.ts'
 import { uuid } from '../../data/uuid.ts'
+import { dayLabel } from '../../i18n/dates.ts'
 import { categoryName, t, tx } from '../../i18n/index.ts'
 import { AmountDisplay } from '../../ui/AmountDisplay.tsx'
 import { Button } from '../../ui/Button.tsx'
@@ -17,6 +18,7 @@ import { Money } from '../../ui/Money.tsx'
 import { Sheet } from '../../ui/Sheet.tsx'
 import { useToast } from '../../ui/Toast.tsx'
 import { addSessionStart, endAddSession } from './addSession.ts'
+import { DateChips, resolveDay, type DayChoice } from './DateChips.tsx'
 
 /** The core flow: type an amount, tap a category, and it is saved. */
 export function AddSheet() {
@@ -36,6 +38,7 @@ function AddSheetBody({ startedAt }: { startedAt: number }) {
   const [failedCategory, setFailedCategory] = useState<CategoryId | null>(null)
   const [shakeKey, setShakeKey] = useState(0)
   const [nudged, setNudged] = useState(false)
+  const [day, setDay] = useState<DayChoice>({ kind: 'today' })
 
   const rawRef = useRef(raw)
   rawRef.current = raw
@@ -46,6 +49,7 @@ function AddSheetBody({ startedAt }: { startedAt: number }) {
 
   const amount = parseAmount(raw)
   const tooMuch = exceedsMax(raw)
+  const today = todayInIsrael()
 
   const close = () => {
     if ((location.state as { fromApp?: boolean } | null)?.fromApp) navigate(-1)
@@ -92,10 +96,11 @@ function AddSheetBody({ startedAt }: { startedAt: number }) {
     setFailedCategory(null)
     const id = (idRef.current ??= uuid())
     const durationMs = Math.round(performance.now() - startedAt)
+    // The Israel date at the moment of saving, not when the sheet opened (midnight).
+    const now = todayInIsrael()
+    const spentOn = resolveDay(day, now)
     try {
-      await run((r) =>
-        r.addExpense({ id, amountAgorot: amount, category, spentOn: todayInIsrael(), logDurationMs: durationMs }),
-      )
+      await run((r) => r.addExpense({ id, amountAgorot: amount, category, spentOn, logDurationMs: durationMs }))
     } catch {
       savingRef.current = false
       setSaving(false)
@@ -110,6 +115,7 @@ function AddSheetBody({ startedAt }: { startedAt: number }) {
       message: (
         <>
           {t('toast.saved')} <Money agorot={amount} /> · {categoryName(category)}
+          {spentOn !== now && <> · {dayLabel(spentOn, now)}</>}
         </>
       ),
       action: { label: t('toast.undo'), onClick: () => void undo(id) },
@@ -145,6 +151,9 @@ function AddSheetBody({ startedAt }: { startedAt: number }) {
 
         <div className="pb-2">
           <CategoryGrid onPick={(id) => void save(id)} inactive={amount === null} disabled={saving} />
+        </div>
+        <div className="pb-1">
+          <DateChips value={day} onChange={setDay} today={today} disabled={saving} />
         </div>
       </div>
       <Keypad onKey={dispatch} disabled={saving} />

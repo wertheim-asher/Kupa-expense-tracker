@@ -8,6 +8,8 @@ export const APP = {
   slug: 'kupa',
   version: '0.1.0',
   description: 'תמיד יודעים כמה נשאר עד החיוב הבא',
+  owner: 'אשר וורטהיים',
+  copyrightYear: 2026,
 } as const
 
 export const LIMITS = {

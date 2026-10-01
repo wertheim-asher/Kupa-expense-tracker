@@ -37,6 +37,7 @@
 | 2026-10-01 | Demo seed: current-cycle total is exactly `elapsed share x budget x 1.08`, capped at 97% of the budget so the last days of a cycle never seed over budget. Seeded expenses are dated up to yesterday (or 1 or 2 from earlier today on a cycle's first day). Expense count is the target divided by the average expense (about 28 to 31 around presentation day). | The spec's formula goes over 100% on the last 2 days of a cycle; and seeded times later than "now" would sort above the expense added live on stage. |
 | 2026-10-01 | `uuid()` falls back to `crypto.getRandomValues` when `crypto.randomUUID` is missing. | `randomUUID` only exists on https or localhost; phone testing over the LAN is plain http. |
 | 2026-10-01 | Budget bucket boundaries: under 5k is `< 5,000`, 5k to 10k is `5,000 to 9,999.99`, 10k to 20k is `10,000 to 20,000`, over 20k is `> 20,000`. | The spec names the buckets but not the edges. |
+| 2026-10-01 | The date chip is three chips side by side ("היום" / "אתמול" / "תאריך אחר…") instead of one chip that cycles on tap. "Other date" is a transparent native date input laid over the chip, so each phone opens its own picker (desktop gets `showPicker()`). | One tap to "yesterday" with the choice always visible, instead of hidden state behind repeated taps. Same three options as the spec. |
 | 2026-10-01 | Home big number: nearest shekel with halves rounded away from zero, and any overage shows as at least ₪1 (`leftForDisplay`). | An exception to "rounded to the nearest shekel": over by ₪0.30 would otherwise show red over-budget styling with "over budget by ₪0", which contradicts itself. |
 | 2026-10-01 | Precache the Rubik latin-ext `.woff2` files too (about 32 KB). | The ₪ sign is drawn from the latin-ext face, so without it an offline launch requests fonts it cannot get. |
 | 2026-10-01 | Visual checks run with a scratch script (`playwright-core` + the installed Chrome, headless, mobile emulation) at 360x740 and 390x844; it is not part of the repo. | The built-in browser pane's screenshots timed out or came back tiled while the app window was in the background. |
@@ -58,6 +59,11 @@
 | Date | Who | Feedback | Action |
 |---|---|---|---|
 | 2026-10-01 | Asher | The member initial chips (נ for Noa, ד for Dan) don't line up from row to row in the expense list. | The amount now sits in a fixed-width slot (6.5rem, text aligned to the end), so every chip lands in the same column. Measured in headless Chrome: all 28 demo rows, including a worst-case ₪99,999.99, put the chip at the same x position at 360 and 390px, with no overlap. |
+| 2026-10-01 | Asher | Empty state copy: "...כדי להוסיף את ההוצאה הראשונה" reads better than "...את הראשונה". | Changed `home.empty` (a fixed SPEC string; Asher owns the spec). |
+| 2026-10-01 | Asher | On mobile there is no way to set the date of a new expense. | It was a fast-lane cut (date chip). Un-cut: three chips under the categories, "היום" (default, so logging stays 3 taps), "אתמול", "תאריך אחר…" (native date picker, max today, min 365 days ago). The toast names the day when it is not today. |
+| 2026-10-01 | Asher | Asked what "הורדת הוצאות" and "הורדת אירועים" are. | "אירועים" is developer jargon. Renamed to "הורדת נתוני שימוש (CSV)" and added one line under the buttons that explains both files. |
+| 2026-10-01 | Asher | Wants a copyright line at the bottom of settings. | Added "© 2026 אשר וורטהיים. כל הזכויות שמורות." under the version line; owner and year live in `config.ts`. |
+| 2026-10-01 | Asher | Wants a QR code so the lecturer and classmates can try the app, each on their own. | Works as-is: all data is per browser, so every visitor gets a private, independent budget or demo copy. Made two QR codes in `presentation/` (app welcome screen, and straight into the demo), each decoded back to its URL to prove it scans. Told Asher that classmates' usage events stay on their phones, so he cannot see them without the Supabase phase. |
 | 2026-10-01 | Asher | Asked why the project is not on GitHub. | The spec asks for a local git repo with a commit per phase, but never for a remote, and Netlify CLI can deploy without one; I should have flagged that gap. Asher chose a private repo: created https://github.com/wertheim-asher/Kupa-expense-tracker and pushed all commits. Each phase commit is pushed from now on. |
 
 ## Edge case results
@@ -76,7 +82,7 @@
 | Realtime sync between partners | deadline |
 | Offline outbox | deadline (not needed: LocalRepo writes to `localStorage`, it works offline by design) |
 | Previous cycle navigation | deadline |
-| Date chip on the add screen | deadline |
+| ~~Date chip on the add screen~~ | Un-cut on 2026-10-01 after Asher's phone feedback (see Feedback). |
 | English toggle | deadline |
 | Dark mode | deadline |
 | Playwright smoke test | deadline |

@@ -22,6 +22,11 @@ export function cycleLabel(cycle: Cycle): string {
   return t('home.cycleLabel', { start: dayMonth.format(utc(cycle.start)), end: dayMonth.format(utc(cycle.lastDay)) })
 }
 
+/** "29 בספט׳" */
+export function shortDate(date: IsoDate): string {
+  return dayMonth.format(utc(date))
+}
+
 /** "היום", "אתמול", or a short localized date. */
 export function dayLabel(date: IsoDate, today: IsoDate): string {
   if (date === today) return t('home.today')

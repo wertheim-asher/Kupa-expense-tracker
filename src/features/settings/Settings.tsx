@@ -140,6 +140,7 @@ export function Settings() {
               <Download size={20} aria-hidden="true" />
               {t('settings.exportEvents')}
             </Button>
+            <p className="px-1 pt-1 text-sm text-muted">{t('settings.exportHelp')}</p>
           </div>
         </Card>
 
@@ -182,8 +183,9 @@ export function Settings() {
           />
         )}
 
-        <footer className="mt-auto pt-4 text-center text-sm text-muted">
-          {t('app.footer', { name: APP.name, version: APP.version })}
+        <footer className="mt-auto flex flex-col gap-1 pt-4 text-center text-sm text-muted">
+          <p>{t('app.footer', { name: APP.name, version: APP.version })}</p>
+          <p>{t('app.copyright', { year: APP.copyrightYear, owner: APP.owner })}</p>
         </footer>
       </main>
     </div>

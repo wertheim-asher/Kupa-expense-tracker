@@ -1,9 +1,10 @@
 // Core flow, end to end in jsdom with the real LocalRepo: create a budget, log ₪45, undo.
 
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { repoFor } from '../data/mode.ts'
+import { addDays, todayInIsrael } from '../domain/cycle.ts'
 import type { StoreData } from '../data/store.ts'
 import { App } from './App.tsx'
 
@@ -102,6 +103,36 @@ describe('core flow (LocalRepo)', () => {
     expect(cancels).toHaveLength(1)
     expect(cancels[0].props).toEqual({ duration_ms: expect.any(Number), had_amount: true })
     expect(stored().expenses).toHaveLength(0)
+  })
+
+  it('defaults to today and can log an expense for yesterday or another date', async () => {
+    const user = userEvent.setup()
+    render(<App initialMode="local" />)
+    await createBudget(user)
+    const today = todayInIsrael()
+
+    await user.click(screen.getByRole('button', { name: 'הוספת הוצאה' }))
+    let sheet = await screen.findByRole('dialog', { name: 'הוצאה חדשה' })
+    expect(within(sheet).getByRole('button', { name: 'היום' })).toHaveAttribute('aria-pressed', 'true')
+    await typeOnKeypad(user, '30')
+    await user.click(within(sheet).getByRole('button', { name: 'אתמול' }))
+    expect(within(sheet).getByRole('button', { name: 'אתמול' })).toHaveAttribute('aria-pressed', 'true')
+    await user.click(within(sheet).getByRole('button', { name: 'בית' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(visible(screen.getByRole('status').textContent ?? '')).toMatch(/נשמר ✓ 30 ₪ · בית · אתמול/)
+    expect(stored().expenses[0].spentOn).toBe(addDays(today, -1))
+
+    await user.click(screen.getByRole('button', { name: 'הוספת הוצאה' }))
+    sheet = await screen.findByRole('dialog', { name: 'הוצאה חדשה' })
+    await typeOnKeypad(user, '20')
+    const other = within(sheet).getByLabelText('תאריך אחר')
+    expect(other).toHaveAttribute('max', today)
+    expect(other).toHaveAttribute('min', addDays(today, -365))
+    fireEvent.change(other, { target: { value: addDays(today, -5) } })
+    await user.click(within(sheet).getByRole('button', { name: 'פנאי' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(stored().expenses[1].spentOn).toBe(addDays(today, -5))
+    expect(stored().expenses.every((e) => e.amountAgorot > 0)).toBe(true)
   })
 
   it('edits the category of an expense', async () => {
