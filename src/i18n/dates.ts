@@ -22,6 +22,13 @@ export function cycleLabel(cycle: Cycle): string {
   return t('home.cycleLabel', { start: dayMonth.format(utc(cycle.start)), end: dayMonth.format(utc(cycle.lastDay)) })
 }
 
+const dayMonthYear = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+
+/** "29 בספט׳ 2025" */
+export function fullDate(date: IsoDate): string {
+  return dayMonthYear.format(utc(date))
+}
+
 /** "29 בספט׳" */
 export function shortDate(date: IsoDate): string {
   return dayMonth.format(utc(date))

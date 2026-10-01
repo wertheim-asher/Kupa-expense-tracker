@@ -7,6 +7,7 @@ import { todayInIsrael } from '../../domain/cycle.ts'
 import { keypadReducer } from '../../domain/keypad.ts'
 import { exceedsMax, parseAmount } from '../../domain/money.ts'
 import { uuid } from '../../data/uuid.ts'
+import { isAllowedSpentOn } from '../../data/validate.ts'
 import { dayLabel } from '../../i18n/dates.ts'
 import { categoryName, t, tx } from '../../i18n/index.ts'
 import { AmountDisplay } from '../../ui/AmountDisplay.tsx'
@@ -39,6 +40,7 @@ function AddSheetBody({ startedAt }: { startedAt: number }) {
   const [shakeKey, setShakeKey] = useState(0)
   const [nudged, setNudged] = useState(false)
   const [day, setDay] = useState<DayChoice>({ kind: 'today' })
+  const [dateError, setDateError] = useState(false)
 
   const rawRef = useRef(raw)
   rawRef.current = raw
@@ -50,6 +52,8 @@ function AddSheetBody({ startedAt }: { startedAt: number }) {
   const amount = parseAmount(raw)
   const tooMuch = exceedsMax(raw)
   const today = todayInIsrael()
+  const dateOk = isAllowedSpentOn(resolveDay(day, today), today)
+  const showDateError = dateError || !dateOk
 
   const close = () => {
     if ((location.state as { fromApp?: boolean } | null)?.fromApp) navigate(-1)
@@ -99,6 +103,13 @@ function AddSheetBody({ startedAt }: { startedAt: number }) {
     // The Israel date at the moment of saving, not when the sheet opened (midnight).
     const now = todayInIsrael()
     const spentOn = resolveDay(day, now)
+    // Never send a date the repo will reject (iOS picker range, or the oldest date after midnight).
+    if (!isAllowedSpentOn(spentOn, now)) {
+      savingRef.current = false
+      setSaving(false)
+      setDateError(true)
+      return
+    }
     try {
       await run((r) => r.addExpense({ id, amountAgorot: amount, category, spentOn, logDurationMs: durationMs }))
     } catch {
@@ -150,10 +161,23 @@ function AddSheetBody({ startedAt }: { startedAt: number }) {
         )}
 
         <div className="pb-2">
-          <CategoryGrid onPick={(id) => void save(id)} inactive={amount === null} disabled={saving} />
+          <CategoryGrid onPick={(id) => void save(id)} inactive={amount === null || !dateOk} disabled={saving} />
         </div>
         <div className="pb-1">
-          <DateChips value={day} onChange={setDay} today={today} disabled={saving} />
+          <DateChips
+            value={day}
+            onChange={(next) => {
+              setDay(next)
+              setDateError(false)
+            }}
+            today={today}
+            disabled={saving}
+          />
+          {showDateError && (
+            <p id="add-date-error" role="alert" className="mt-1 text-center text-sm font-medium text-over">
+              {t('edit.dateInvalid')}
+            </p>
+          )}
         </div>
       </div>
       <Keypad onKey={dispatch} disabled={saving} />

@@ -1,7 +1,8 @@
 import { LIMITS } from '../../config.ts'
 import { addDays } from '../../domain/cycle.ts'
+import { isAllowedSpentOn } from '../../data/validate.ts'
 import type { IsoDate } from '../../domain/types.ts'
-import { shortDate } from '../../i18n/dates.ts'
+import { fullDate, shortDate } from '../../i18n/dates.ts'
 import { t } from '../../i18n/index.ts'
 import { cls } from '../../ui/cls.ts'
 
@@ -35,6 +36,8 @@ export function DateChips({
   disabled?: boolean
 }) {
   const yesterday = addDays(today, -1)
+  // iOS ignores min/max in its picker and desktop lets you type a year, so the value can be out of range.
+  const otherInvalid = value.kind === 'other' && !isAllowedSpentOn(value.date, today)
   const pickOther = (date: string) => {
     if (!date) return
     if (date === today) onChange({ kind: 'today' })
@@ -62,12 +65,24 @@ export function DateChips({
       >
         {t('add.dateYesterday')}
       </button>
-      <label className={cls(chip, value.kind === 'other' ? on : off, disabled && 'pointer-events-none opacity-50')}>
-        <span aria-hidden="true">{value.kind === 'other' ? shortDate(value.date) : `${t('add.dateOther')}…`}</span>
+      <label
+        className={cls(
+          chip,
+          otherInvalid ? 'border-over bg-over-soft text-over' : value.kind === 'other' ? on : off,
+          'has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary',
+          disabled && 'pointer-events-none opacity-50',
+        )}
+      >
+        <span aria-hidden="true">
+          {value.kind !== 'other' ? `${t('add.dateOther')}…` : otherInvalid ? fullDate(value.date) : shortDate(value.date)}
+        </span>
         <input
           type="date"
           disabled={disabled}
           aria-label={t('add.dateOther')}
+          aria-invalid={otherInvalid || undefined}
+          aria-describedby={otherInvalid ? 'add-date-error' : undefined}
+          data-keypad-passthrough=""
           min={addDays(today, -LIMITS.maxPastDays)}
           max={today}
           value={value.kind === 'other' ? value.date : ''}
@@ -80,7 +95,7 @@ export function DateChips({
               // Not allowed here (or already open); the native control still works.
             }
           }}
-          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          className="absolute inset-0 h-full w-full cursor-pointer text-base opacity-0"
         />
       </label>
     </div>

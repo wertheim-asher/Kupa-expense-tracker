@@ -135,6 +135,50 @@ describe('core flow (LocalRepo)', () => {
     expect(stored().expenses.every((e) => e.amountAgorot > 0)).toBe(true)
   })
 
+  it('refuses an out-of-range "other date" with the real reason, and never saves it', async () => {
+    const user = userEvent.setup()
+    render(<App initialMode="local" />)
+    await createBudget(user)
+    const today = todayInIsrael()
+    await user.click(screen.getByRole('button', { name: 'הוספת הוצאה' }))
+    const sheet = await screen.findByRole('dialog', { name: 'הוצאה חדשה' })
+    await typeOnKeypad(user, '30')
+
+    // iOS lets the picker go past max: a future date must not reach the repo.
+    const other = within(sheet).getByLabelText('תאריך אחר')
+    fireEvent.change(other, { target: { value: addDays(today, 2) } })
+    expect(within(sheet).getByRole('alert')).toHaveTextContent('אפשר לבחור תאריך מהשנה האחרונה, לא בעתיד.')
+    expect(other).toHaveAttribute('aria-invalid', 'true')
+    const home = within(sheet).getByRole('button', { name: 'בית' })
+    expect(home).toHaveAttribute('aria-disabled', 'true')
+    await user.click(home)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(stored().expenses).toHaveLength(0)
+    expect(within(sheet).queryByText('לא הצלחנו לשמור. לנסות שוב?')).not.toBeInTheDocument()
+
+    // Too old is refused the same way; going back to "today" clears it and saves.
+    fireEvent.change(other, { target: { value: addDays(today, -400) } })
+    expect(within(sheet).getByRole('alert')).toHaveTextContent('אפשר לבחור תאריך מהשנה האחרונה')
+    await user.click(within(sheet).getByRole('button', { name: 'היום' }))
+    expect(within(sheet).queryByRole('alert')).not.toBeInTheDocument()
+    await user.click(home)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(stored().expenses[0]).toMatchObject({ spentOn: today, amountAgorot: 3000 })
+  })
+
+  it('keeps keyboard digits on the amount while the date input has focus', async () => {
+    const user = userEvent.setup()
+    render(<App initialMode="local" />)
+    await createBudget(user)
+    await user.click(screen.getByRole('button', { name: 'הוספת הוצאה' }))
+    const sheet = await screen.findByRole('dialog', { name: 'הוצאה חדשה' })
+    within(sheet).getByLabelText('תאריך אחר').focus()
+    await user.keyboard('45')
+    await user.click(within(sheet).getByRole('button', { name: 'סופר' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(stored().expenses[0].amountAgorot).toBe(4500)
+  })
+
   it('edits the category of an expense', async () => {
     const user = userEvent.setup()
     render(<App initialMode="local" />)

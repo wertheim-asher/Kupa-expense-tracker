@@ -22,7 +22,9 @@ export function Keypad({ onKey, disabled = false }: { onKey: (action: KeypadActi
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return
       const target = event.target as HTMLElement | null
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA')) return
+      const typingInField = target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA')
+      // The add sheet's hidden date input keeps focus after a pick; typing still means the amount.
+      if (typingInField && target.dataset.keypadPassthrough === undefined) return
       const action = actionFor(event.key)
       if (!action) return
       event.preventDefault()

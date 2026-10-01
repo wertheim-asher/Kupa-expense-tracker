@@ -92,7 +92,7 @@ export const he = {
   'settings.export': 'ייצוא נתונים',
   'settings.exportExpenses': 'הורדת הוצאות (CSV)',
   'settings.exportEvents': 'הורדת נתוני שימוש (CSV)',
-  'settings.exportHelp': 'הוצאות: כל מה שנרשם, כולל מה שנמחק. נתוני שימוש: מתי ואיך משתמשים באפליקציה, בלי סכומים ובלי שמות.',
+  'settings.exportHelp': 'הוצאות: כל מה שנרשם, כולל מה שנמחק. נתוני שימוש: מי השתמש באפליקציה, מתי ואיך, בלי סכומים.',
   'settings.demo': 'מצב הדגמה',
   'settings.resetDemo': 'איפוס הדמו',
   'settings.resetDemoDone': 'הדמו חזר להתחלה',
