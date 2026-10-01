@@ -1,0 +1,136 @@
+@import 'tailwindcss';
+
+/* Design tokens (SPEC section 10). Dark mode is cut for the fast lane. */
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --text: #1c1c1e;
+  --muted: #6b6b70;
+  --border: #e6e6e3;
+  --primary: #0f766e;
+  --primary-soft: #ccfbf1;
+  --warn: #b45309;
+  --warn-soft: #fef3c7;
+  --over: #b91c1c;
+  --over-soft: #fee2e2;
+  --member-teal: #0f766e;
+  --member-violet: #6d28d9;
+
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-soft: var(--primary-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-over: var(--over);
+  --color-over-soft: var(--over-soft);
+  --color-member-teal: var(--member-teal);
+  --color-member-violet: var(--member-violet);
+
+  --font-sans: 'Rubik', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+
+  --animate-sheet-up: sheet-up 220ms ease-out;
+  --animate-fade-in: fade-in 180ms ease-out;
+  --animate-toast-in: toast-in 200ms ease-out;
+  --animate-shake: shake 360ms ease-out;
+  --animate-highlight: highlight 1500ms ease-out;
+
+  @keyframes sheet-up {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    20% {
+      transform: translateX(-8px);
+    }
+    40% {
+      transform: translateX(7px);
+    }
+    60% {
+      transform: translateX(-5px);
+    }
+    80% {
+      transform: translateX(3px);
+    }
+  }
+  @keyframes highlight {
+    0%,
+    40% {
+      background-color: var(--primary-soft);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    background-color: var(--bg);
+  }
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+  }
+  button {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 3px solid var(--primary);
+    outline-offset: 2px;
+  }
+  /* Native date input: keep the picker inside the column. */
+  input[type='date'] {
+    min-height: 48px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

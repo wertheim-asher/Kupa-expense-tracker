@@ -1,0 +1,94 @@
+// Money (SPEC section 6). Integer agorot only, never floats for stored values.
+
+import { LIMITS, LOCALE } from '../config.ts'
+
+const AMOUNT_RE = /^(\d+)(?:\.(\d{0,2}))?$/
+
+/**
+ * Parses a typed amount ("45", "12.9", "12.90") into agorot.
+ * Returns null when the text is malformed, has more than 2 decimals,
+ * is zero, or is above ₪100,000.
+ */
+export function parseAmount(text: string): number | null {
+  const m = AMOUNT_RE.exec(text)
+  if (!m) return null
+  const whole = m[1]
+  if (whole.replace(/^0+/, '').length > LIMITS.maxIntegerDigits) return null
+  const frac = (m[2] ?? '').padEnd(2, '0')
+  const agorot = Number(whole) * 100 + Number(frac)
+  if (!Number.isSafeInteger(agorot) || agorot <= 0 || agorot > LIMITS.maxAmountAgorot) return null
+  return agorot
+}
+
+export function isValidAmount(agorot: number): boolean {
+  return Number.isInteger(agorot) && agorot > 0 && agorot <= LIMITS.maxAmountAgorot
+}
+
+/**
+ * Normalizes what people type into a regular text field (budget input):
+ * drops spaces and ₪, removes thousands separators ("9,000"),
+ * and treats a decimal comma ("12,5") as a dot.
+ */
+export function normalizeTypedAmount(text: string): string {
+  const s = text.replace(/[\s ₪]/g, '')
+  if (/^\d{1,3}(,\d{3})+(\.\d*)?$/.test(s)) return s.replace(/,/g, '')
+  return s.replace(',', '.')
+}
+
+const formatters = new Map<string, Intl.NumberFormat>()
+
+function currencyFormat(locale: string, decimals: 0 | 2): Intl.NumberFormat {
+  const key = `${locale}|${decimals}`
+  let f = formatters.get(key)
+  if (!f) {
+    f = new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: 'ILS',
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    })
+    formatters.set(key, f)
+  }
+  return f
+}
+
+/** Whole amounts show no decimals, others show 2. Agorot in, display text out. */
+export function formatMoney(agorot: number, locale: string = LOCALE): string {
+  const whole = agorot % 100 === 0
+  return currencyFormat(locale, whole ? 0 : 2).format(agorot / 100)
+}
+
+/** Rounded to the nearest shekel (home big number). */
+export function roundToShekel(agorot: number): number {
+  return Math.round(agorot / 100) * 100
+}
+
+/** Floor of max(left, 0) / daysLeft, in whole shekels, returned as agorot. */
+export function perDayAgorot(leftAgorot: number, daysLeft: number): number {
+  if (daysLeft <= 0) return 0
+  return Math.floor(Math.max(leftAgorot, 0) / 100 / daysLeft) * 100
+}
+
+/** Agorot as a plain decimal string for CSV ("45.00"). */
+export function agorotToDecimalString(agorot: number): string {
+  const sign = agorot < 0 ? '-' : ''
+  const abs = Math.abs(agorot)
+  return `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`
+}
+
+/**
+ * Formats keypad text while typing ("1234.5" → "1,234.5 ₪" in he-IL), keeping
+ * a trailing dot and partial decimals that formatMoney would round away.
+ */
+export function formatTyped(raw: string, locale: string = LOCALE): string {
+  const [whole, frac] = raw.split('.')
+  const parts = currencyFormat(locale, 0).formatToParts(Number(whole || '0'))
+  let lastNumeric = -1
+  parts.forEach((p, i) => {
+    if (p.type === 'integer' || p.type === 'group') lastNumeric = i
+  })
+  const decimalSep = currencyFormat(locale, 2).formatToParts(1.5).find((p) => p.type === 'decimal')?.value ?? '.'
+  return parts
+    .map((p, i) => (i === lastNumeric && frac !== undefined ? `${p.value}${decimalSep}${frac}` : p.value))
+    .join('')
+}
