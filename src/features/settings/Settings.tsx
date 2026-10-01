@@ -131,17 +131,22 @@ export function Settings() {
         </Card>
 
         <Card title={t('settings.export')}>
-          <div className="flex flex-col gap-2 p-4">
-            <Button variant="secondary" className="justify-start" onClick={() => void exportCsv('expenses')}>
-              <Download size={20} aria-hidden="true" />
-              {t('settings.exportExpenses')}
-            </Button>
-            <Button variant="secondary" className="justify-start" onClick={() => void exportCsv('events')}>
-              <Download size={20} aria-hidden="true" />
-              {t('settings.exportEvents')}
-            </Button>
-            <p className="px-1 pt-1 text-sm text-muted">{t('settings.exportHelp')}</p>
-          </div>
+          <ul className="divide-y divide-border">
+            <li>
+              <ExportRow
+                title={t('settings.exportExpenses')}
+                help={t('settings.exportExpensesHelp')}
+                onClick={() => void exportCsv('expenses')}
+              />
+            </li>
+            <li>
+              <ExportRow
+                title={t('settings.exportEvents')}
+                help={t('settings.exportEventsHelp')}
+                onClick={() => void exportCsv('events')}
+              />
+            </li>
+          </ul>
         </Card>
 
         {mode === 'demo' ? (
@@ -201,6 +206,25 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
       </h2>
       <div className="overflow-hidden rounded-2xl bg-surface">{children}</div>
     </section>
+  )
+}
+
+/** One download per row: what the file is, and in one line what is inside it. */
+function ExportRow({ title, help, onClick }: { title: string; help: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-h-16 w-full touch-manipulation items-center gap-3 px-4 py-3 text-start active:bg-bg focus-visible:-outline-offset-3"
+    >
+      <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
+        <Download size={20} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-medium">{title}</span>
+        <span className="block text-sm text-muted">{help}</span>
+      </span>
+    </button>
   )
 }
 
