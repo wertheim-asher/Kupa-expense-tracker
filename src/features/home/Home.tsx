@@ -164,7 +164,10 @@ function ExpenseList({
                   </span>
                   <span className="min-w-0 flex-1 truncate text-start">{categoryName(e.category)}</span>
                   <MemberChip member={members.find((m) => m.id === e.memberId)} />
-                  <Money agorot={e.amountAgorot} className="font-medium" />
+                  {/* Fixed-width amount slot keeps the member chips in one column across rows. */}
+                  <span className="min-w-[6.5rem] shrink-0 text-end">
+                    <Money agorot={e.amountAgorot} className="font-medium" />
+                  </span>
                 </Link>
               </li>
             ))}
