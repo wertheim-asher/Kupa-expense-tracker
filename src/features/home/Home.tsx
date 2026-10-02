@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight, Clock, Plus, Settings as SettingsIcon, Wallet } from 'lucide-react'
+import { memo } from 'react'
 import { Link, Outlet, useMatch, useNavigate } from 'react-router'
 import { useReadyData } from '../../app/DataProvider.tsx'
 import { LIMITS, TIMING } from '../../config.ts'
@@ -121,7 +122,8 @@ export function Home() {
   )
 }
 
-function Summary({
+// Memoized: opening or closing a sheet re-renders Home (the route changes), but not these.
+const Summary = memo(function Summary({
   leftAgorot,
   spentAgorot,
   budgetAgorot,
@@ -167,7 +169,7 @@ function Summary({
       </p>
     </section>
   )
-}
+})
 
 function groupByDay(expenses: Expense[]): Array<{ date: IsoDate; items: Expense[] }> {
   const groups: Array<{ date: IsoDate; items: Expense[] }> = []
@@ -179,7 +181,7 @@ function groupByDay(expenses: Expense[]): Array<{ date: IsoDate; items: Expense[
   return groups
 }
 
-function ExpenseList({
+const ExpenseList = memo(function ExpenseList({
   expenses,
   members,
   today,
@@ -193,7 +195,8 @@ function ExpenseList({
   return (
     <div className="space-y-5">
       {groupByDay(expenses).map((group) => (
-        <section key={group.date} aria-labelledby={`day-${group.date}`}>
+        // Days below the screen skip layout and paint until they scroll near (content-visibility).
+        <section key={group.date} aria-labelledby={`day-${group.date}`} className="[contain-intrinsic-size:auto_9rem] [content-visibility:auto]">
           <h3 id={`day-${group.date}`} className="mb-2 px-1 text-sm font-medium text-muted">
             {dayLabel(group.date, today)}
           </h3>
@@ -237,7 +240,7 @@ function ExpenseList({
       ))}
     </div>
   )
-}
+})
 
 function EmptyState({ past }: { past: boolean }) {
   return (

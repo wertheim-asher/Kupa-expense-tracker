@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
-import { useReadyData } from '../../app/DataProvider.tsx'
+import { useReadyData, withExpense, withoutExpense } from '../../app/DataProvider.tsx'
 import { LIMITS } from '../../config.ts'
 import type { CategoryId } from '../../domain/categories.ts'
 import { addDays, todayInIsrael } from '../../domain/cycle.ts'
@@ -124,7 +124,7 @@ function EditForm({
     setBusy(true)
     setFailed(false)
     try {
-      await run((r) => r.updateExpense(expense.id, patch))
+      await run((r) => r.updateExpense(expense.id, patch), (list, updated, cycle) => withExpense(list, updated, cycle))
     } catch {
       setDone(false)
       setBusy(false)
@@ -144,7 +144,7 @@ function EditForm({
     setBusy(true)
     setFailed(false)
     try {
-      await run((r) => r.deleteExpense(expense.id))
+      await run((r) => r.deleteExpense(expense.id), (list) => withoutExpense(list, expense.id))
     } catch {
       setDone(false)
       setBusy(false)

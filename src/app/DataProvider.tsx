@@ -32,8 +32,12 @@ interface DataApi extends Snapshot {
   highlightIds: ReadonlySet<string>
   /** Reloads everything from the repo. */
   refresh(): Promise<void>
-  /** Runs a repo call, then reloads. Errors from the call are passed on. */
-  run<T>(call: (repo: Repo) => Promise<T>): Promise<T>
+  /**
+   * Runs a repo call, then reloads. Errors from the call are passed on. With `apply`, the change to
+   * the list on screen shows at once and the reload runs in the background, so a sheet can close
+   * after one round trip to the server instead of two.
+   */
+  run<T>(call: (repo: Repo) => Promise<T>, apply?: (expenses: Expense[], result: T, cycle: Cycle) => Expense[]): Promise<T>
   /** Briefly highlights a row (1.5s). */
   highlight(id: string): void
   /** Shows an earlier cycle (offset below 0) or the current one (0). */
@@ -49,6 +53,20 @@ export interface ReadyData extends DataApi {
 }
 
 const DataContext = createContext<DataApi | null>(null)
+
+/** Newest first, as the repos list them: by date, then by the time they were logged. */
+const byNewest = (a: Expense, b: Expense) =>
+  a.spentOn === b.spentOn ? b.createdAt.localeCompare(a.createdAt) : b.spentOn.localeCompare(a.spentOn)
+
+/** The list with `expense` added or replaced, or without it when its date is outside `cycle`. */
+export function withExpense(expenses: Expense[], expense: Expense, cycle: Cycle): Expense[] {
+  const rest = expenses.filter((e) => e.id !== expense.id)
+  return expense.spentOn >= cycle.start && expense.spentOn < cycle.endExclusive ? [...rest, expense].sort(byNewest) : rest
+}
+
+export function withoutExpense(expenses: Expense[], id: string): Expense[] {
+  return expenses.filter((e) => e.id !== id)
+}
 
 export function useData(): DataApi {
   const api = useContext(DataContext)
@@ -152,9 +170,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
   )
 
   const run = useCallback(
-    async <T,>(call: (r: Repo) => Promise<T>): Promise<T> => {
+    async <T,>(call: (r: Repo) => Promise<T>, apply?: (expenses: Expense[], result: T, cycle: Cycle) => Expense[]): Promise<T> => {
       const result = await call(repo)
-      await load()
+      if (!apply) {
+        await load()
+        return result
+      }
+      setSnapshot((s) => (s.status === 'ready' && s.cycle ? { ...s, expenses: apply(s.expenses, result, s.cycle) } : s))
+      // An older reload still on its way must not put the old list back; the new one waits a moment,
+      // so the change on screen is painted first.
+      loadSeq.current++
+      setTimeout(() => void load(), 0)
       return result
     },
     [repo, load],
