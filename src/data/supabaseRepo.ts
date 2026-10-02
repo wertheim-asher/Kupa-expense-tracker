@@ -143,6 +143,8 @@ export class SupabaseRepo implements Repo {
   private pendingEvents: Array<{ name: string; props: Record<string, unknown>; at: string }> = []
   private notifyTimer: ReturnType<typeof setTimeout> | null = null
   private subscribedOnce = false
+  /** The server's check of the seat this page opened with (see getSession). */
+  private seatCheck: Promise<boolean> | null = null
   private flushing: Promise<void> | null = null
 
   constructor(client: SupabaseClient) {
@@ -337,6 +339,15 @@ export class SupabaseRepo implements Repo {
       this.setSession(this.session, this.sessionUserId) // Still sends anything saved offline, as before.
       return { ...this.session }
     }
+    // Opening the app with the login this device saw last time: use the seat it had, and check it with
+    // the server alongside the first reads instead of before them (one round trip less on every open).
+    const cache = offlineCache.get()
+    if (data.session && !this.session && cache.session && cache.sessionUserId === data.session.user.id) {
+      const guess = cache.session
+      this.setSession(guess, data.session.user.id)
+      this.seatCheck = this.checkSeat(data.session.user.id, guess)
+      return { ...guess }
+    }
     if (!data.session) {
       // Offline (or the server unreachable) with an expired token the session cannot be refreshed;
       // keep using this device's household. Any other auth error means the login is really gone.
@@ -364,8 +375,38 @@ export class SupabaseRepo implements Repo {
     }
     const row = rows?.[0] as { id: string; household_id: string } | undefined
     this.setSession(row ? { householdId: row.household_id, memberId: row.id } : null, data.session.user.id)
-    offlineCache.update({ session: this.session ?? undefined })
+    offlineCache.update({ session: this.session ?? undefined, sessionUserId: this.session ? data.session.user.id : undefined })
     return this.session ? { ...this.session } : null
+  }
+
+  /** The server's answer for the seat used at open: true when it is still this login's seat (or no answer). */
+  private async checkSeat(userId: string, guess: Session): Promise<boolean> {
+    try {
+      const { data: rows, error } = await this.sb.from('members').select('id, household_id').eq('user_id', userId).limit(1)
+      // No answer (offline, server down): keep the seat, as an offline open does.
+      if (error) return true
+      const row = rows?.[0] as { id: string; household_id: string } | undefined
+      if (row && row.id === guess.memberId && row.household_id === guess.householdId) return true
+      // Something else changed the session meanwhile (a join, a disconnect): that one stands.
+      if (this.session !== guess) return true
+      // Taken back on another device (or moved): follow the server, and reload whoever listens.
+      const next = row ? { householdId: row.household_id, memberId: row.id } : null
+      this.setSession(next, userId)
+      offlineCache.update({ session: next ?? undefined, sessionUserId: next ? userId : undefined })
+      this.notify()
+      return false
+    } catch {
+      return true
+    }
+  }
+
+  async seatConfirmed(): Promise<boolean> {
+    const check = this.seatCheck
+    if (!check) return true
+    const ok = await check
+    // A wrong seat is reported once, so a caller that loads again cannot loop on it.
+    if (!ok && this.seatCheck === check) this.seatCheck = null
+    return ok
   }
 
   async createHousehold(input: CreateInput): Promise<CreateResult> {

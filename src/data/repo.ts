@@ -15,6 +15,14 @@ import type {
   Session,
 } from '../domain/types.ts'
 
+/** What this device showed last time, to open on at once while the first load refreshes it. */
+export interface CachedHome {
+  session: Session
+  household: Household
+  members: Member[]
+  expenses: Expense[]
+}
+
 export interface Repo {
   getSession(): Promise<Session | null>
   createHousehold(input: CreateInput): Promise<CreateResult>
@@ -29,6 +37,13 @@ export interface Repo {
   peekHousehold?(): Household | null
   /** This member's personal code as last seen on this device (undefined: not known here). */
   peekPersonalCode?(): string | null | undefined
+  /** The home this device showed last time for the cycle `rangeFor` gives, or null (shared backend only). */
+  peekCached?(rangeFor: (household: Household) => { from: string; toExclusive: string }): CachedHome | null
+  /**
+   * False, once, when the seat used at open turned out to be taken back or moved (the server said so
+   * after reads for it had started); the caller then loads again. True otherwise.
+   */
+  seatConfirmed?(): Promise<boolean>
   /** Demo only: the partner logs ₪84 groceries, arriving like a partner's expense does with sync. */
   simulatePartnerExpense?(): Promise<void>
   getHousehold(): Promise<Household>

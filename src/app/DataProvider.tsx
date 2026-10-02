@@ -96,7 +96,17 @@ const EMPTY: Omit<Snapshot, 'status' | 'today'> = {
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const { mode, repo } = useMode()
-  const [snapshot, setSnapshot] = useState<Snapshot>(() => ({ status: 'loading', today: todayInIsrael(), ...EMPTY }))
+  const [snapshot, setSnapshot] = useState<Snapshot>(() => {
+    const today = todayInIsrael()
+    // A device with a shared budget opens on what it showed last time; the first load refreshes it.
+    const cached = repo.peekCached?.((h) => {
+      const c = cycleFor(today, h.cycleStartDay)
+      return { from: c.start, toExclusive: c.endExclusive }
+    })
+    if (!cached) return { status: 'loading', today, ...EMPTY }
+    const cycle = cycleFor(today, cached.household.cycleStartDay)
+    return { status: 'ready', today, ...cached, cycle, currentCycle: cycle, viewOffset: 0 }
+  })
   const [highlightIds, setHighlightIds] = useState<ReadonlySet<string>>(new Set())
   const snapshotRef = useRef(snapshot)
   snapshotRef.current = snapshot
@@ -140,6 +150,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return next
     } catch {
       if (seq !== loadSeq.current) return null
+      // The seat this device opened with was taken back on another device, so its reads failed:
+      // load again with the server's answer instead of showing an error.
+      if ((await repo.seatConfirmed?.()) === false && seq === loadSeq.current) return load()
       // Keep showing what we have if a background refresh fails.
       if (snapshotRef.current.status !== 'ready') setSnapshot({ status: 'error', today, ...EMPTY })
       return null
