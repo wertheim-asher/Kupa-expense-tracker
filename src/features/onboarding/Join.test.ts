@@ -19,6 +19,10 @@ describe('normalizePersonalCode (12 characters)', () => {
     ['ABCD EFGH JKMN', 'ABCDEFGHJKMN'],
     ['abcd-efgh-jkmn', 'ABCDEFGHJKMN'],
     ['ABCDEFGHJKMNPQ', 'ABCDEFGHJKMN'],
+    // The hash of a return link, as the /back screen reads it.
+    ['#ABCDEFGHJKMN', 'ABCDEFGHJKMN'],
+    ['https://kupa-expense-tracker.netlify.app/back#ABCDEFGHJKMN', 'ABCDEFGHJKMN'],
+    ['קופה: הקישור האישי שלי לחזרה לקופה ממכשיר אחר. לא לשתף. https://x.app/back#abcdefghjkmn', 'ABCDEFGHJKMN'],
   ])('%s → %s', (input, expected) => {
     expect(normalizePersonalCode(input)).toBe(expected)
   })

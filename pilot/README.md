@@ -37,8 +37,8 @@ The invite promises that only usage data is used, without amounts or names. Keep
 ## Running the numbers (October 16)
 1. Open the Supabase dashboard, project `xblsobdgqmwvnbdhowiq`.
 2. SQL Editor, New query. Paste all of `metrics.sql`.
-3. In `params` at the top, check the start date (the day you sent the invites) and the invite code of
-   your own budget (Settings in the app), so your own budget counts too.
+3. In `params` at the top, check the start date (the day you sent the invites). The invite code of your
+   own budget (TRRYBE) is already there, so your own budget counts too.
 4. Run. One table appears: copy it, or take a screenshot, and send it to Claude for the slides.
 
 What the rows mean:

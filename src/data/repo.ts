@@ -18,7 +18,10 @@ import type {
 export interface Repo {
   getSession(): Promise<Session | null>
   createHousehold(input: CreateInput): Promise<CreateResult>
-  /** With a personal code, takes back that member's own seat (new device) instead of joining as someone new. */
+  /**
+   * With a personal code, takes back that member's own seat (new device) instead of joining as someone
+   * new. The personal code alone is enough: the app then passes an empty invite code and name.
+   */
   joinHousehold(code: string, displayName: string, personalCode?: string): Promise<JoinResult>
   /** This member's private personal code (shared backend only; null on device-only storage). */
   getMyPersonalCode(): Promise<string | null>

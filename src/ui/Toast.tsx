@@ -10,7 +10,7 @@ interface ToastState extends ToastOptions {
   id: number
 }
 
-interface ToastApi {
+export interface ToastApi {
   show(options: ToastOptions): void
   dismiss(): void
 }

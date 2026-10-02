@@ -96,6 +96,8 @@ function AppRoutes() {
         <Route path="expense/:id" element={<EditSheet />} />
       </Route>
       {syncEnabled && <Route path="/join/:code?" element={<JoinGate />} />}
+      {/* A return link from "Send to myself": /back#PERSONALCODE. */}
+      {syncEnabled && <Route path="/back" element={<JoinGate />} />}
       {syncEnabled && (
         <Route
           path="/invite"

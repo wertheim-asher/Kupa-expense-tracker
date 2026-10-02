@@ -76,6 +76,19 @@ describe('personal code', () => {
     await repo.joinHousehold('ABC234', '', 'ABCDEFGHJKMN')
     expect(offlineCache.get().personalCode).toBeUndefined()
   })
+
+  it('alone takes the seat back on a new device: no invite code, no name', async () => {
+    const client = fakeClient({ join: { data: { household_id: 'h1', member_id: 'm1', rejoined: true }, error: null } })
+    const rpc = vi.spyOn(client, 'rpc')
+    const repo = new SupabaseRepo(client)
+    expect(await repo.joinHousehold('', '', 'ABCDEFGHJKMN')).toEqual({ householdId: 'h1', memberId: 'm1' })
+    expect(rpc).toHaveBeenCalledWith('join_household', { p_code: '', p_display_name: '', p_personal_code: 'ABCDEFGHJKMN' })
+  })
+
+  it('a wrong personal code is reported as such', async () => {
+    const repo = new SupabaseRepo(fakeClient({ join: { data: null, error: { message: 'personal_code_invalid', code: 'P0001' } } }))
+    await expect(repo.joinHousehold('', '', 'AAAAAAAAAAAA')).rejects.toMatchObject({ code: 'personal_code_invalid' })
+  })
 })
 
 describe('getSession with an expired login', () => {

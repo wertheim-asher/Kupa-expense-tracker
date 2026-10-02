@@ -12,7 +12,7 @@ Partner sync (Supabase) is live since October 2, 2026. Hebrew is the default; En
 
 - **Two modes for the real app.** With the two Supabase variables set (see [SETUP.md](SETUP.md)), budgets are shared: one partner creates, sends an invite link, the other joins, and each sees the other's expenses live. Without them, everything stays in this browser (the fast-lane build).
 - **No accounts.** Each phone gets an anonymous user when someone creates or joins a budget. Every table has row level security: a household can only ever see and change its own data (`npm run test:rls`).
-- **Back on a new phone.** Settings shows a private 12-character personal code. The invite code plus the personal code takes your seat back with all your history.
+- **Back on a new phone.** One code: Settings shows a private 12-character personal code, and "שליחה לעצמי" (Send to myself) sends it as a link to a chat with yourself. On a new phone, that link, or the code typed in, takes your seat back with all your history. The invite code is only for the partner's first join.
 - **Offline.** Expenses saved without a connection appear at once with a small clock icon and are sent when the connection returns, never twice. Edit and delete wait for the connection.
 
 ## Run locally
@@ -64,9 +64,9 @@ Database changes live in `supabase/migrations/`, run in order in the Supabase SQ
 
 ## Known limitations
 
-- Sessions are anonymous and tied to one browser on one phone. Clearing site data signs that phone out; the invite code plus your personal code brings you back.
+- Sessions are anonymous and tied to one browser on one phone. Clearing site data signs that phone out; your personal code (or the link from "Send to myself") brings you back. It changes after each use, so save the new one.
 - At most 2 members per household. There is no way to remove a partner.
-- Anyone who has a member's live phone (or both codes) can use that seat; keep the personal code private.
+- Anyone who has a member's live phone (or their personal code) can use that seat; keep the code and its link private.
 - Basic security for an MVP: row level security on every table, no rate limiting, no captcha.
 - Free Supabase projects pause after a week without activity; open the dashboard the day before a demo.
-- No bank sync, by design. Categories are fixed. Hebrew only in this build.
+- No bank sync, by design. Categories are fixed. Hebrew and English.
