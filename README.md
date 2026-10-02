@@ -6,7 +6,7 @@ A shared budget app for couples, built as a Product Management course MVP. Both 
 - **Code:** https://github.com/wertheim-asher/Kupa-expense-tracker (private)
 - **Demo:** add `?demo=1` to the URL (or tap "צפייה בדמו" on the welcome screen). `?demo=0` or "יציאה מהדמו" in settings returns to the real app. The demo always runs on the phone only, so it works without internet.
 
-Partner sync (Supabase) is built on the `sync` branch, pull request #1, with its own preview link. Until it is merged, the live site is the on-device build. See [SPEC.md](SPEC.md) for the plan and [BUILD_LOG.md](BUILD_LOG.md) for every decision, problem and cut.
+Partner sync (Supabase) is live since October 2, 2026. Hebrew is the default; English and dark mode are in too (Settings, and the phone's dark setting). See [SPEC.md](SPEC.md) for the plan, [BUILD_LOG.md](BUILD_LOG.md) for every decision, problem and cut, and [pilot/](pilot/README.md) for the pilot with real couples.
 
 ## How it works
 
@@ -28,11 +28,15 @@ To try it on a phone on the same Wi-Fi: `npm run dev -- --host`, then open the "
 
 For partner sync locally, put the two values from [SETUP.md](SETUP.md) in `.env.local`.
 
-Other scripts: `npm test` (unit and flow tests, always on-device), `npm run test:rls` (security checks against the real Supabase project), `npm run build` (typecheck and production build), `npm run icons` (regenerate PWA icons).
+Other scripts: `npm test` (unit and flow tests, always on-device), `npm run test:e2e` (the phone smoke test, below), `npm run test:rls` (security checks against the real Supabase project), `npm run build` (typecheck and production build), `npm run icons` (regenerate PWA icons).
+
+### Phone smoke test
+
+`npm run test:e2e` builds the app, opens it on an iPhone 13 screen (in Chromium) and goes through the core flow in demo mode: add ₪45, undo, edit a category, switch to English (SPEC section 14). The first time on a computer, install its browser once: `npx playwright install chromium`. On GitHub it runs on every pull request, together with the type check and the unit tests (`.github/workflows/tests.yml`); merge only when it is green.
 
 ## Deploy
 
-Every push to `main` builds and deploys the live site on Netlify automatically. Every pull request gets its own preview link. To deploy by hand:
+Every push to `main` builds and deploys the live site on Netlify automatically, except a push that only changes notes, the pilot kit or the QR codes (`ignore` in `netlify.toml`). Every pull request gets its own preview link, which is free. On Netlify's free plan each production deploy costs 15 of 300 monthly credits, and at 300 the site pauses until the next cycle, so changes reach the live site in batches. To deploy by hand:
 
 ```bash
 npx netlify-cli login
@@ -54,6 +58,9 @@ Database changes live in `supabase/migrations/`, run in order in the Supabase SQ
 - [ ] Edit: tap an expense, change the category and the date, save. Move one to last month: it leaves the list and the totals.
 - [ ] Settings: change the cycle start day, home recalculates right away. Download both CSV files and open them in Excel (Hebrew shows correctly).
 - [ ] Demo: `?demo=1` shows Noa and Dan's seeded cycle; "איפוס הדמו" restores it.
+- [ ] History: the arrow next to the cycle dates shows the previous cycle; edit an expense there; "חזרה למחזור הנוכחי" returns.
+- [ ] English: Settings → English. The app turns left to right; "עברית" switches back.
+- [ ] Dark mode: turn on the phone's dark mode; every screen stays readable.
 
 ## Known limitations
 

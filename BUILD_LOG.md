@@ -70,6 +70,9 @@
 | 2026-10-02 | The Supabase library loads only when this device has, creates or joins a shared budget (`LazySupabaseRepo`). Screens ask `syncConfig.ts` whether sync is on, without loading the library. | A new visitor (QR code) on the welcome screen or in the demo downloads a third less: 166 KB to 109 KB compressed. The service worker still stores the library for offline use. |
 | 2026-10-02 | Pilot kit in `pilot/`: a WhatsApp invite, 3 closing questions, and `metrics.sql`, one query that gives the numbers for the 3 assumptions (logging time, cancels, daily use, cycle start days). | With two more weeks, real use by a few couples is the strongest evidence for the presentation. The query reads only counts and times, never amounts or names, as the invite promises. Checked on a real Postgres (PGlite) with test data, every number by hand. |
 | 2026-10-02 | Production builds skip changes that only touch notes, the pilot kit or the QR codes (`ignore` in `netlify.toml`, production only). Changes reach the live site in batches. | Netlify's free plan: 15 of 300 monthly credits per production deploy, and at 300 every site pauses until the cycle resets (October 13). Half was used by October 2. Deploy previews are free. |
+| 2026-10-02 | Dark mode follows the phone's setting, with the SPEC's dark values plus three text-on-color tokens (`on-primary`, `on-over`, `on-member`) that the SPEC table does not have. | White text on the dark theme's light teal and light red is about 2:1, below AA; dark text on them is 5:1 or more. |
+| 2026-10-02 | English: the language is read once at startup and switching reloads the app. Amounts and dates use `en-IL` ("₪45", "10 Sept"). A demo seeded in Hebrew keeps Hebrew names until "Reset demo". | One reload is simpler and safer than making every date and amount formatter react to a change; people rarely switch. |
+| 2026-10-02 | Phone smoke test with Playwright 1.56.1 (pinned), the iPhone 13 screen in Chromium, SPEC 14 steps 1 to 6; a GitHub Actions workflow runs type check, unit tests and the smoke test on every pull request. | The SPEC's iPhone 13 profile defaults to WebKit, which is not installed everywhere; the screen size, touch and user agent are what the test needs. Pinned to the version whose browser this environment has. Pull requests only, to save minutes. |
 
 ## Problems, failures and AI limitations
 | Date | What happened | How it was solved | Time lost |
@@ -167,9 +170,9 @@ Verified on 2026-10-01 by four audit agents against the live site (headless Chro
 | ~~Offline outbox~~ | Un-cut in Phase 3 (Asher: "go sync", 2026-10-01), on the sync branch. With a server, logging without signal must still work. |
 | ~~Previous cycle navigation~~ | Un-cut on 2026-10-02 at Asher's request (history). |
 | ~~Date chip on the add screen~~ | Un-cut on 2026-10-01 after Asher's phone feedback (see Feedback). |
-| English toggle | deadline. Being built after the date moved (2026-10-02). |
-| Dark mode | deadline. Being built after the date moved (2026-10-02). |
-| Playwright smoke test | deadline. Being built after the date moved (2026-10-02). |
+| ~~English toggle~~ | Un-cut on 2026-10-02 after the date moved. |
+| ~~Dark mode~~ | Un-cut on 2026-10-02 after the date moved. |
+| ~~Playwright smoke test~~ | Un-cut on 2026-10-02 after the date moved. Runs on every pull request. |
 | ~~RLS isolation test~~ | Un-cut in Phase 3 (Asher: "go sync", 2026-10-01), on the sync branch. `npm run test:rls`, 34 checks. |
 | ~~Demo "Simulate partner expense" button~~ | Un-cut on 2026-10-02 at Asher's request. |
 | ~~Offline banner~~ | Un-cut in Phase 3 (Asher: "go sync", 2026-10-01), on the sync branch. The spec's text is true now that expenses wait to be sent. Shown with the shared backend only. |
@@ -185,4 +188,5 @@ Verified on 2026-10-01 by four audit agents against the live site (headless Chro
 | Feedback round 1 (Asher) | 2026-10-01 | 2026-10-01 | Date chips (un-cut), clearer copy, export rows, copyright, QR codes for the class, add screen reordered to date, amount, category; second review of the date chips (4 fixes); Netlify badge off; GitHub repo with auto-deploy on every push to `main`. |
 | Phase 3: partner sync (sync branch, PR #1) | 2026-10-01 | 2026-10-02 | Supabase schema with RLS (3 review rounds before running), personal-code rejoin, join and invite, realtime, offline outbox. Verified on the deploy preview with two browsers: 16 sync checks, 17 offline checks, regression at 360 and 390px; RLS test 36/36 on the real project; 159 unit tests. Offline hardening (293cad1) and the client review fixes (8 + 1) on 2026-10-02. Asher's two-phone test passed on 2026-10-02; his round 2 (code rows with copy buttons, speed, keypad on short screens) done the same day: 173 unit tests. Merged to `main` on 2026-10-02 at 15:45 with Asher's OK (PR #1, merge commit); the live site deploys from `main`. |
 | Round 3: history, demo partner button, faster first open (PR #2) | 2026-10-02 | 2026-10-02 | Built after the merge on its own branch and deploy preview. 178 unit tests; checked at 360x646. Asher tested the preview ("looks great") and approved the merge. |
+| Round 4: pilot kit, dark mode, English, phone smoke test | 2026-10-02 | | After the date moved to October 18. One pull request, one production deploy (credits). 180 unit tests, smoke test 3 of 3. |
 | Edge-case audit | 2026-10-01 | 2026-10-01 | All 17 SPEC cases verified on the live site plus tests; 3 gaps fixed and re-verified live; 150 tests pass. Open: Asher's phone test, and the "go sync" decision for Phase 3. |
