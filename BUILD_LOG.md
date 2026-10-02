@@ -10,6 +10,7 @@
 - **Not building:** bank/card sync, kids or more than 2 members, smart/AI categories, charts/reports/insights, income/savings/per-category budgets, notes/receipts/photos/merchants, push/reminders/emails, real accounts, multiple households per device, recurring expenses/splits/debts.
 - **Fast lane (deadline):** live on Netlify by Friday Oct 2, 2026 evening. Build Phase 1 and Phase 2 with a local-only repo (LocalRepo, the real app, persisted in `localStorage`) plus the seeded DemoRepo (`?demo=1`). No Supabase, no join/invite until Asher writes "go sync".
 - **Partner sync (2026-10-01):** "go sync" for Phase 3 (Supabase, join and invite, realtime), with a safety net: built on a separate `sync` branch tested through a Netlify preview link while the live app stays untouched; hard cutoff Friday Oct 2, 16:00, after which the fallback is the current live app plus the demo "simulate partner expense" button; demo mode stays fully local either way.
+- **New date (2026-10-02):** the presentation moved from Sunday October 4 to Sunday October 18, so there are two more weeks to finish the project.
 
 ## Decisions made by Claude (the builder)
 | Date | Decision | Why |

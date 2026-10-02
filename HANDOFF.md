@@ -1,5 +1,5 @@
 # Handoff: Kupa (קופה), PM course MVP. Fri 2026-10-02, 07:15 Israel time
-Goal: shared-budget PWA for couples (Hebrew RTL): log an expense in 3 taps, always see "left this cycle". Live by Fri Oct 2 evening; presentation Sun Oct 4. Read CLAUDE.md, SPEC.md (FAST LANE first) and BUILD_LOG.md (full history) before working.
+Goal: shared-budget PWA for couples (Hebrew RTL): log an expense in 3 taps, always see "left this cycle". Live since Fri Oct 2; presentation moved to Sun Oct 18. Read CLAUDE.md, SPEC.md (FAST LANE first) and BUILD_LOG.md (full history) before working.
 
 ## Where things are
 - Live (`main`, on-device only): https://kupa-expense-tracker.netlify.app. Every push to `main` auto-deploys to production.
@@ -37,4 +37,4 @@ Asher's two-phone test passed. Done since: code rows with copy buttons in settin
 
 ## Next steps
 1. Asher: check the live site on his phone (create or open the budget, add an expense, partner sees it).
-2. Before Sunday: open the Supabase dashboard, reset the demo on the presenting phone, install the app to the home screen, put the QR codes on a slide.
+2. Before the presentation (now Sunday October 18; a reminder fires Saturday October 17 at 20:00): open the Supabase dashboard, reset the demo on the presenting phone, install the app to the home screen, put the QR codes on a slide.
