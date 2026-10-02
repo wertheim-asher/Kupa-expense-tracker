@@ -65,6 +65,12 @@ export const he = {
   'home.daysLeft': 'עוד {n} ימים · בערך {amount} ליום', // SPEC
   'home.daysLeftOnly': 'עוד {n} ימים',
   'home.lastDay': 'יום אחרון במחזור', // SPEC
+  'home.leftPast': 'נשארו {amount} בסוף המחזור',
+  'home.cycleEnded': 'המחזור הזה הסתיים',
+  'home.emptyPast': 'לא נרשמו הוצאות במחזור הזה.',
+  'home.prevCycle': 'המחזור הקודם',
+  'home.nextCycle': 'המחזור הבא',
+  'home.backToCurrent': 'חזרה למחזור הנוכחי',
   'home.spentOf': 'הוצאתם {spent} מתוך {budget}', // SPEC
   'home.progress': 'התקציב נוצל ב-{percent}%',
   'home.empty': 'עוד אין הוצאות במחזור הזה. לוחצים על + כדי להוסיף את ההוצאה הראשונה.', // SPEC, wording changed by Asher
@@ -94,10 +100,11 @@ export const he = {
   'toast.undone': 'ההוצאה בוטלה',
   'toast.updated': 'השינויים נשמרו',
   'toast.updatedEarlierCycle': 'השינויים נשמרו. ההוצאה עברה למחזור קודם.',
+  'toast.updatedOtherCycle': 'השינויים נשמרו. ההוצאה עברה למחזור אחר.',
   'toast.inEarlierCycle': 'במחזור קודם',
   'toast.deleted': 'ההוצאה נמחקה',
   'toast.goneElsewhere': 'ההוצאה הזאת נמחקה במקום אחר',
-  'toast.leftCycle': 'ההוצאה הזאת כבר לא במחזור הנוכחי',
+  'toast.leftCycle': 'ההוצאה הזאת כבר לא במחזור הזה',
   'toast.actionFailed': 'משהו לא הצליח. לנסות שוב?',
 
   'error.save': 'לא הצלחנו לשמור. לנסות שוב?', // SPEC
@@ -134,6 +141,8 @@ export const he = {
   'settings.resetDemo': 'איפוס הדמו',
   'settings.resetDemoDone': 'הדמו חזר להתחלה',
   'settings.exitDemo': 'יציאה מהדמו',
+  'settings.simulatePartner': 'הדמיה: הוצאה של בן או בת הזוג',
+  'settings.simulatePartnerSoon': 'עוד 3 שניות תגיע הוצאה מבן או בת הזוג',
   'settings.danger': 'ניתוק',
   'settings.disconnect': 'ניתוק המכשיר הזה',
   'settings.disconnectWarnLocal':

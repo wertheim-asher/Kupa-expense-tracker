@@ -3,7 +3,7 @@ import { useMode } from '../../app/ModeContext.tsx'
 import { APP } from '../../config.ts'
 import { t } from '../../i18n/index.ts'
 import { Button } from '../../ui/Button.tsx'
-import { syncEnabled } from '../../data/supabase.ts'
+import { syncEnabled } from '../../data/syncConfig.ts'
 
 // "Join with a code" appears only when this build has the shared backend.
 export function Welcome() {

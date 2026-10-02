@@ -1,9 +1,9 @@
-import { Clock, Plus, Settings as SettingsIcon, Wallet } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, Plus, Settings as SettingsIcon, Wallet } from 'lucide-react'
 import { Link, Outlet, useMatch, useNavigate } from 'react-router'
 import { useReadyData } from '../../app/DataProvider.tsx'
-import { TIMING } from '../../config.ts'
+import { LIMITS, TIMING } from '../../config.ts'
 import { CATEGORY_EMOJI } from '../../domain/categories.ts'
-import { daysLeft as countDaysLeft } from '../../domain/cycle.ts'
+import { addDays, daysLeft as countDaysLeft, shiftCycle } from '../../domain/cycle.ts'
 import { leftForDisplay, perDayAgorot } from '../../domain/money.ts'
 import type { Expense, IsoDate, Member } from '../../domain/types.ts'
 import { cycleLabel, dayLabel } from '../../i18n/dates.ts'
@@ -17,7 +17,7 @@ import { Skeleton } from '../../ui/Skeleton.tsx'
 import { beginAddSession, justSaved } from '../add-expense/addSession.ts'
 
 export function Home() {
-  const { household, cycle, expenses, members, today, highlightIds, repo } = useReadyData()
+  const { household, cycle, viewOffset, viewCycle, expenses, members, today, highlightIds, repo } = useReadyData()
   const navigate = useNavigate()
   const addOpen = useMatch('/add')
   const editOpen = useMatch('/expense/:id')
@@ -26,6 +26,9 @@ export function Home() {
   const spent = expenses.reduce((sum, e) => sum + e.amountAgorot, 0)
   const left = household.budgetAgorot - spent
   const days = countDaysLeft(today, cycle)
+  // History: earlier cycles, back as far as expenses can be dated (a year).
+  const past = viewOffset < 0
+  const canGoBack = shiftCycle(cycle, household.cycleStartDay, -1).lastDay >= addDays(today, -LIMITS.maxPastDays)
 
   const startAdd = () => {
     beginAddSession(performance.now())
@@ -36,8 +39,33 @@ export function Home() {
   return (
     <>
       <div inert={sheetOpen} className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between gap-2 ps-5 pe-2 pt-2">
-          <h1 className="text-[15px] font-medium text-muted">{cycleLabel(cycle)}</h1>
+        <header className="flex items-center justify-between gap-2 ps-1 pe-2 pt-2">
+          <div className="flex min-w-0 items-center">
+            <button
+              type="button"
+              onClick={() => viewCycle(viewOffset - 1)}
+              disabled={!canGoBack}
+              aria-label={t('home.prevCycle')}
+              className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full text-muted active:bg-surface disabled:opacity-30"
+            >
+              <ChevronLeft size={22} aria-hidden="true" className="rtl:-scale-x-100" />
+            </button>
+            <h1 aria-live="polite" className="truncate text-[15px] font-medium text-muted">
+              {cycleLabel(cycle, today)}
+            </h1>
+            <button
+              type="button"
+              onClick={() => viewCycle(viewOffset + 1)}
+              disabled={!past}
+              aria-label={t('home.nextCycle')}
+              className={cls(
+                'grid size-11 shrink-0 touch-manipulation place-items-center rounded-full text-muted active:bg-surface',
+                !past && 'invisible',
+              )}
+            >
+              <ChevronRight size={22} aria-hidden="true" className="rtl:-scale-x-100" />
+            </button>
+          </div>
           <Link
             to="/settings"
             state={{ fromApp: true }}
@@ -48,30 +76,45 @@ export function Home() {
           </Link>
         </header>
 
+        {past && (
+          <div className="flex justify-center px-4 pt-1">
+            <button
+              type="button"
+              onClick={() => viewCycle(0)}
+              className="min-h-9 touch-manipulation rounded-full bg-primary-soft px-4 text-sm font-medium text-primary active:brightness-95"
+            >
+              {t('home.backToCurrent')}
+            </button>
+          </div>
+        )}
+
         <main className="flex-1 px-4 pb-32">
-          <Summary leftAgorot={left} spentAgorot={spent} budgetAgorot={household.budgetAgorot} daysLeft={days} />
+          <Summary leftAgorot={left} spentAgorot={spent} budgetAgorot={household.budgetAgorot} daysLeft={days} past={past} />
           <section aria-labelledby="list-title" className="mt-8">
             <h2 id="list-title" className="sr-only">
               {t('home.listTitle')}
             </h2>
             {expenses.length === 0 ? (
-              <EmptyState />
+              <EmptyState past={past} />
             ) : (
               <ExpenseList expenses={expenses} members={members} today={today} highlightIds={highlightIds} />
             )}
           </section>
         </main>
 
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[480px]">
-          <button
-            type="button"
-            onClick={startAdd}
-            aria-label={t('home.add')}
-            className="pointer-events-auto absolute end-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] grid size-16 touch-manipulation place-items-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 transition-transform duration-150 ease-out active:scale-95"
-          >
-            <Plus size={32} strokeWidth={2.5} aria-hidden="true" />
-          </button>
-        </div>
+        {/* New expenses belong to the current cycle, so no "+" while looking at an earlier one. */}
+        {!past && (
+          <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[480px]">
+            <button
+              type="button"
+              onClick={startAdd}
+              aria-label={t('home.add')}
+              className="pointer-events-auto absolute end-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] grid size-16 touch-manipulation place-items-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 transition-transform duration-150 ease-out active:scale-95"
+            >
+              <Plus size={32} strokeWidth={2.5} aria-hidden="true" />
+            </button>
+          </div>
+        )}
       </div>
       <Outlet />
     </>
@@ -83,17 +126,20 @@ function Summary({
   spentAgorot,
   budgetAgorot,
   daysLeft,
+  past,
 }: {
   leftAgorot: number
   spentAgorot: number
   budgetAgorot: number
   daysLeft: number
+  /** An earlier cycle: what was left at its end, and no days left. */
+  past: boolean
 }) {
   const shown = useAnimatedNumber(leftForDisplay(leftAgorot), TIMING.numberAnimMs)
   const isOver = leftAgorot < 0
   // Follows the animated value, so the text flips when the count crosses zero.
   const over = shown < 0
-  const { before, after } = around(over ? 'home.over' : 'home.left', 'amount')
+  const { before, after } = around(over ? 'home.over' : past ? 'home.leftPast' : 'home.left', 'amount')
 
   return (
     <section aria-labelledby="summary-title" className="pt-6 text-center">
@@ -105,7 +151,9 @@ function Summary({
         {after && <span className={cls('text-lg', over ? 'font-medium text-over' : 'text-muted')}>{after}</span>}
       </h2>
       <p className="mt-3 text-muted">
-        {daysLeft <= 1
+        {past
+          ? t('home.cycleEnded')
+          : daysLeft <= 1
           ? t('home.lastDay')
           : isOver
             ? t('home.daysLeftOnly', { n: daysLeft })
@@ -191,13 +239,13 @@ function ExpenseList({
   )
 }
 
-function EmptyState() {
+function EmptyState({ past }: { past: boolean }) {
   return (
     <div className="rounded-2xl bg-surface px-6 py-10 text-center">
       <span aria-hidden="true" className="mx-auto grid size-14 place-items-center rounded-full bg-primary-soft text-primary">
         <Wallet size={28} />
       </span>
-      <p className="mt-4 text-muted">{t('home.empty')}</p>
+      <p className="mt-4 text-muted">{t(past ? 'home.emptyPast' : 'home.empty')}</p>
     </div>
   )
 }

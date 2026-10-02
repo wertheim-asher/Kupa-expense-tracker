@@ -1,4 +1,4 @@
-import { ChevronLeft, Download, LogOut, Pencil, RotateCcw, Unplug } from 'lucide-react'
+import { ChevronLeft, Download, LogOut, Pencil, RotateCcw, Unplug, Users } from 'lucide-react'
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { useReadyData } from '../../app/DataProvider.tsx'
@@ -17,7 +17,7 @@ import { Money } from '../../ui/Money.tsx'
 import { CopyButton } from '../../ui/CopyButton.tsx'
 import { useToast } from '../../ui/Toast.tsx'
 import { useOnline } from '../../ui/useOnline.ts'
-import { syncEnabled } from '../../data/supabase.ts'
+import { syncEnabled } from '../../data/syncConfig.ts'
 import { RepoError } from '../../data/repo.ts'
 import { ShareInviteButton } from '../onboarding/InviteShare.tsx'
 
@@ -213,6 +213,22 @@ export function Settings() {
                 <RotateCcw size={20} aria-hidden="true" />
                 {t('settings.resetDemo')}
               </Button>
+              {repo.simulatePartnerExpense && (
+                <Button
+                  variant="secondary"
+                  className="justify-start"
+                  onClick={() => {
+                    // Home first, so the partner's expense is seen arriving (SPEC: after 3 seconds).
+                    toast.show({ message: t('settings.simulatePartnerSoon'), durationMs: 3000 })
+                    navigate('/', { replace: true })
+                    window.scrollTo({ top: 0 })
+                    setTimeout(() => void repo.simulatePartnerExpense?.().catch(() => undefined), 3000)
+                  }}
+                >
+                  <Users size={20} aria-hidden="true" />
+                  {t('settings.simulatePartner')}
+                </Button>
+              )}
               <Button
                 variant="secondary"
                 className="justify-start"

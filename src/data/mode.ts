@@ -7,8 +7,8 @@ import { APP } from '../config.ts'
 import { buildDemoSeed } from './demoSeed.ts'
 import { LocalStoreRepo } from './localStoreRepo.ts'
 import type { Repo } from './repo.ts'
-import { supabase, syncEnabled } from './supabase.ts'
-import { SupabaseRepo } from './supabaseRepo.ts'
+import { LazySupabaseRepo } from './lazySupabaseRepo.ts'
+import { syncEnabled } from './syncConfig.ts'
 
 export type Mode = 'local' | 'demo'
 
@@ -50,7 +50,7 @@ export function repoFor(mode: Mode): Repo {
     mode === 'demo'
       ? new LocalStoreRepo({ key: `${APP.slug}.demo.v1`, seed: buildDemoSeed })
       : syncEnabled
-        ? new SupabaseRepo(supabase())
+        ? new LazySupabaseRepo()
         : new LocalStoreRepo({ key: `${APP.slug}.local.v1` })
   return repos[mode]
 }

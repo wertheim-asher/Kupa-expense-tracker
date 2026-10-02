@@ -17,9 +17,11 @@ function utc(date: IsoDate): Date {
   return new Date(Date.UTC(y, m - 1, d))
 }
 
-/** "10 בספט׳ עד 9 באוק׳" */
-export function cycleLabel(cycle: Cycle): string {
-  return t('home.cycleLabel', { start: dayMonth.format(utc(cycle.start)), end: dayMonth.format(utc(cycle.lastDay)) })
+/** "10 בספט׳ עד 9 באוק׳"; with the year ("... 9 באוק׳ 2025") for a cycle from another year. */
+export function cycleLabel(cycle: Cycle, today?: IsoDate): string {
+  const otherYear = today !== undefined && cycle.lastDay.slice(0, 4) !== today.slice(0, 4)
+  const end = (otherYear ? dayMonthYear : dayMonth).format(utc(cycle.lastDay))
+  return t('home.cycleLabel', { start: dayMonth.format(utc(cycle.start)), end })
 }
 
 const dayMonthYear = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })

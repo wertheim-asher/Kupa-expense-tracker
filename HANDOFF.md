@@ -30,9 +30,11 @@ All 8 open problems are fixed, plus one found while checking: "Couldn't save" af
 ## Round 2 (2026-10-02, about 14:40 Israel time)
 Asher's two-phone test passed. Done since: code rows with copy buttons in settings and in the disconnect warning; join error clears when typing; shorter keypad keys on screens under 800px tall (edit sheet fit on his Android); speed (save to home 657 to 341 ms, reopen 557 to 405 ms with a fake backend at 150 ms per request). Details in BUILD_LOG.
 
+## Status at 15:45 (2026-10-02)
+- PR #1 (partner sync) is merged; the live site deploys from `main`.
+- PR #2 (history of earlier cycles, demo "simulate partner expense", the Supabase library loaded only when needed): tested by Asher on its preview and merged.
+
 ## Next steps
-1. Done: fixes 1-8, tests, BUILD_LOG. Left: fast-forward `sync` to the fix commit (needs Asher's OK), so the preview rebuilds.
-2. Re-run on the preview with BASE=<preview url>: sync-e2e.mjs, sync-offline.mjs (RELOAD_OFFLINE=1), preview-regression.mjs in C:\Users\aholi\AppData\Local\Temp\claude\C--Users-aholi-Documents-claude-projects-pm-course-final-project\ac63e82d-bb0b-4a4b-bbfb-3046fe386f4f\scratchpad\shots (playwright-core installed there; if gone, test by hand).
-3. Asher: two-phone test on the preview (create, send invite link, join, partner expense in under 2 s, airplane-mode save, rejoin with personal code).
-4. If solid before 16:00: merge PR #1 (auto-deploys), check the live site, run `npm run test:rls`, update the BUILD_LOG timeline. Otherwise use the fallback above.
-5. Before Sunday: open the Supabase dashboard (free tier pauses after a week idle), reset the demo on the presenting phone, put the QR codes on a slide.
+1. Asher: check the live site on his phone (create or open the budget, add an expense, partner sees it).
+2. Run `npm run test:rls` on a machine that can reach Supabase (this cloud session cannot).
+3. Before Sunday: open the Supabase dashboard, reset the demo on the presenting phone, install the app to the home screen, put the QR codes on a slide.

@@ -3,12 +3,9 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { APP } from '../config.ts'
+import { SUPABASE_ANON_KEY as key, SUPABASE_URL as url } from './syncConfig.ts'
 
-const url = import.meta.env.VITE_SUPABASE_URL
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-/** True when this build talks to the shared backend. */
-export const syncEnabled = Boolean(url && key)
+export { syncEnabled } from './syncConfig.ts'
 
 let client: SupabaseClient | null = null
 

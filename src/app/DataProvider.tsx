@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { TIMING } from '../config.ts'
-import { cycleFor, todayInIsrael, type Cycle } from '../domain/cycle.ts'
+import { cycleFor, shiftCycle, todayInIsrael, type Cycle } from '../domain/cycle.ts'
 import type { Expense, Household, IsoDate, Member, Session } from '../domain/types.ts'
 import type { Mode } from '../data/mode.ts'
 import type { Repo } from '../data/repo.ts'
@@ -16,8 +16,13 @@ interface Snapshot {
   session: Session | null
   household: Household | null
   members: Member[]
+  /** The cycle on screen: the current one, or an earlier one (history). */
   cycle: Cycle | null
-  /** Current cycle, newest first. */
+  /** The cycle today is in. */
+  currentCycle: Cycle | null
+  /** 0 for the current cycle, -1 for the one before it, and so on. */
+  viewOffset: number
+  /** The cycle on screen, newest first. */
   expenses: Expense[]
 }
 
@@ -31,12 +36,15 @@ interface DataApi extends Snapshot {
   run<T>(call: (repo: Repo) => Promise<T>): Promise<T>
   /** Briefly highlights a row (1.5s). */
   highlight(id: string): void
+  /** Shows an earlier cycle (offset below 0) or the current one (0). */
+  viewCycle(offset: number): void
 }
 
 export interface ReadyData extends DataApi {
   session: Session
   household: Household
   cycle: Cycle
+  currentCycle: Cycle
   me: Member | undefined
 }
 
@@ -51,9 +59,9 @@ export function useData(): DataApi {
 /** For screens that only render once data is ready (behind RequireSession). */
 export function useReadyData(): ReadyData {
   const api = useData()
-  const { session, household, cycle } = api
-  if (api.status !== 'ready' || !session || !household || !cycle) throw new Error('Data is not ready')
-  return { ...api, session, household, cycle, me: api.members.find((m) => m.id === session.memberId) }
+  const { session, household, cycle, currentCycle } = api
+  if (api.status !== 'ready' || !session || !household || !cycle || !currentCycle) throw new Error('Data is not ready')
+  return { ...api, session, household, cycle, currentCycle, me: api.members.find((m) => m.id === session.memberId) }
 }
 
 let appOpenTracked = false
@@ -63,6 +71,8 @@ const EMPTY: Omit<Snapshot, 'status' | 'today'> = {
   household: null,
   members: [],
   cycle: null,
+  currentCycle: null,
+  viewOffset: 0,
   expenses: [],
 }
 
@@ -73,10 +83,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const snapshotRef = useRef(snapshot)
   snapshotRef.current = snapshot
   const loadSeq = useRef(0)
+  const viewOffsetRef = useRef(0)
 
   const load = useCallback(async (): Promise<Snapshot | null> => {
     const seq = ++loadSeq.current
     const today = todayInIsrael()
+    const offset = viewOffsetRef.current
+    const viewedFor = (startDay: number): Cycle => {
+      const current = cycleFor(today, startDay)
+      return offset === 0 ? current : shiftCycle(current, startDay, offset)
+    }
     try {
       const session = await repo.getSession()
       let next: Snapshot
@@ -87,18 +103,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
         // cycle on screen, and an app launch in the cycle seen last time: ask for its expenses together
         // with the household, not one after the other.
         const shown = snapshotRef.current.household ?? repo.peekHousehold?.() ?? null
-        const guess = shown?.id === session.householdId ? cycleFor(today, shown.cycleStartDay) : null
+        const guess = shown?.id === session.householdId ? viewedFor(shown.cycleStartDay) : null
         const [household, members, guessed] = await Promise.all([
           repo.getHousehold(),
           repo.getMembers(),
           guess ? repo.listExpenses({ from: guess.start, toExclusive: guess.endExclusive }) : null,
         ])
-        const cycle = cycleFor(today, household.cycleStartDay)
+        const cycle = viewedFor(household.cycleStartDay)
+        const currentCycle = cycleFor(today, household.cycleStartDay)
         const expenses =
           guessed && guess?.start === cycle.start && guess.endExclusive === cycle.endExclusive
             ? guessed
             : await repo.listExpenses({ from: cycle.start, toExclusive: cycle.endExclusive })
-        next = { status: 'ready', today, session, household, members, cycle, expenses }
+        next = { status: 'ready', today, session, household, members, cycle, currentCycle, viewOffset: offset, expenses }
       }
       if (seq !== loadSeq.current) return null
       setSnapshot(next)
@@ -125,6 +142,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
       })
     }, TIMING.highlightMs)
   }, [])
+
+  const viewCycle = useCallback(
+    (offset: number) => {
+      viewOffsetRef.current = Math.min(0, Math.trunc(offset))
+      void load()
+    },
+    [load],
+  )
 
   const run = useCallback(
     async <T,>(call: (r: Repo) => Promise<T>): Promise<T> => {
@@ -177,8 +202,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [load])
 
   const api = useMemo<DataApi>(
-    () => ({ ...snapshot, mode, repo, highlightIds, refresh, run, highlight }),
-    [snapshot, mode, repo, highlightIds, refresh, run, highlight],
+    () => ({ ...snapshot, mode, repo, highlightIds, refresh, run, highlight, viewCycle }),
+    [snapshot, mode, repo, highlightIds, refresh, run, highlight, viewCycle],
   )
 
   return <DataContext.Provider value={api}>{children}</DataContext.Provider>
