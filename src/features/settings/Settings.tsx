@@ -17,6 +17,7 @@ import { MemberChip } from '../../ui/MemberChip.tsx'
 import { Money } from '../../ui/Money.tsx'
 import { CopyButton } from '../../ui/CopyButton.tsx'
 import { useToast } from '../../ui/Toast.tsx'
+import { setThemeChoice, themeChoice, type ThemeChoice } from '../../ui/theme.ts'
 import { useOnline } from '../../ui/useOnline.ts'
 import { syncEnabled } from '../../data/syncConfig.ts'
 import { RepoError } from '../../data/repo.ts'
@@ -36,6 +37,7 @@ export function Settings() {
   const { repo, run, household, members, session } = data
 
   const saved = () => toast.show({ message: t('settings.saved') })
+  const [theme, setTheme] = useState<ThemeChoice>(themeChoice)
 
   // This member's private code for taking their seat back from another device (shared backend only).
   // undefined: not known yet (loading, or offline with nothing cached); null: there is none.
@@ -176,6 +178,30 @@ export function Settings() {
                 {t('settings.cycleHelp')}
               </p>
             </div>
+          </div>
+        </Card>
+
+        <Card title={t('settings.theme')}>
+          <div className="flex gap-2 p-4">
+            {(['light', 'dark', 'system'] as const satisfies readonly ThemeChoice[]).map((choice) => (
+              <button
+                key={choice}
+                type="button"
+                aria-pressed={theme === choice}
+                onClick={() => {
+                  if (choice === theme) return
+                  setThemeChoice(choice)
+                  setTheme(choice)
+                  repo.track('settings_change', { field: 'theme' })
+                }}
+                className={cls(
+                  'min-h-12 flex-1 touch-manipulation rounded-full border px-2 text-sm font-medium leading-tight',
+                  theme === choice ? 'border-primary bg-primary-soft text-primary' : 'border-border bg-surface active:bg-bg',
+                )}
+              >
+                {t(choice === 'light' ? 'settings.themeLight' : choice === 'dark' ? 'settings.themeDark' : 'settings.themeSystem')}
+              </button>
+            ))}
           </div>
         </Card>
 

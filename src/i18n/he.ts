@@ -133,6 +133,10 @@ export const he = {
   'settings.cycleHelp': 'השינוי חל מיד על המחזור הנוכחי.', // SPEC
   'settings.saved': 'נשמר',
   'settings.language': 'שפה',
+  'settings.theme': 'מראה',
+  'settings.themeLight': 'בהיר',
+  'settings.themeDark': 'כהה',
+  'settings.themeSystem': 'לפי המכשיר',
   'settings.export': 'ייצוא נתונים',
   'settings.exportExpenses': 'הורדת הוצאות (CSV)',
   'settings.exportEvents': 'הורדת נתוני שימוש (CSV)',

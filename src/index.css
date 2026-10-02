@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 
-/* Design tokens (SPEC section 10). Dark mode follows the system setting. */
+/* Design tokens (SPEC section 10). Dark: chosen in settings, or the device's setting (see ui/theme.ts). */
 :root {
   --bg: #f7f7f5;
   --surface: #ffffff;
@@ -23,27 +23,26 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #111113;
-    --surface: #1c1c1f;
-    --text: #f2f2f2;
-    --muted: #a1a1aa;
-    --border: #2a2a2e;
-    --primary: #2dd4bf;
-    --primary-soft: #134e4a;
-    --warn: #fbbf24;
-    --warn-soft: #451a03;
-    --over: #f87171;
-    --over-soft: #450a0a;
-    --member-teal: #2dd4bf;
-    --member-violet: #a78bfa;
-    --on-primary: #042f2e;
-    --on-over: #450a0a;
-    --on-member: #111113;
+/* data-theme is set before the first paint (index.html) and by the setting (ui/theme.ts). */
+:root[data-theme='dark'] {
+  --bg: #111113;
+  --surface: #1c1c1f;
+  --text: #f2f2f2;
+  --muted: #a1a1aa;
+  --border: #2a2a2e;
+  --primary: #2dd4bf;
+  --primary-soft: #134e4a;
+  --warn: #fbbf24;
+  --warn-soft: #451a03;
+  --over: #f87171;
+  --over-soft: #450a0a;
+  --member-teal: #2dd4bf;
+  --member-violet: #a78bfa;
+  --on-primary: #042f2e;
+  --on-over: #450a0a;
+  --on-member: #111113;
 
-    color-scheme: dark;
-  }
+  color-scheme: dark;
 }
 
 @theme inline {

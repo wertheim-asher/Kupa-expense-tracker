@@ -135,6 +135,10 @@ export const en: Record<MessageKey, string> = {
   'settings.cycleHelp': 'Changes apply right away to the current cycle.', // SPEC
   'settings.saved': 'Saved',
   'settings.language': 'Language',
+  'settings.theme': 'Appearance',
+  'settings.themeLight': 'Light',
+  'settings.themeDark': 'Dark',
+  'settings.themeSystem': 'Same as device',
   'settings.export': 'Export data',
   'settings.exportExpenses': 'Download expenses (CSV)',
   'settings.exportEvents': 'Download usage data (CSV)',
