@@ -88,6 +88,8 @@ function EditForm({
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const [shakeKey, setShakeKey] = useState(0)
+  // Nothing can be changed while saving, or while a change could not be saved anyway.
+  const locked = busy || blocked !== null
 
   const today = todayInIsrael()
   const amount = parseAmount(raw)
@@ -170,7 +172,7 @@ function EditForm({
         )}
 
         <div className="mt-2">
-          <CategoryGrid onPick={setCategory} selected={category} disabled={busy} />
+          <CategoryGrid onPick={setCategory} selected={category} disabled={locked} />
         </div>
 
         <div className="mt-3">
@@ -182,7 +184,7 @@ function EditForm({
               min={addDays(today, -LIMITS.maxPastDays)}
               max={today}
               required
-              disabled={busy}
+              disabled={locked}
               aria-invalid={!dateOk || undefined}
               aria-describedby={dateOk ? undefined : 'edit-date-error'}
               onChange={(e) => setDate(e.target.value)}
@@ -195,22 +197,21 @@ function EditForm({
             {t('edit.dateInvalid')}
           </p>
         )}
+      </div>
 
-        {blocked && (
-          <p role="status" className="mt-3 rounded-2xl bg-warn-soft px-4 py-2 text-sm font-medium text-warn">
-            {t(blocked)}
-          </p>
-        )}
+      <Keypad onKey={dispatch} disabled={locked || confirming} />
+
+      <div className="shrink-0 px-4 pb-3">
+        {/* Messages sit next to the buttons they explain, so they are seen on small screens. The status
+            region stays mounted and only its content changes, so screen readers announce it when it appears. */}
+        <div role="status">
+          {blocked && <p className="mb-2 rounded-2xl bg-warn-soft px-4 py-2 text-sm font-medium text-warn">{t(blocked)}</p>}
+        </div>
         {failed && (
-          <p role="alert" className="mt-3 rounded-2xl bg-over-soft px-4 py-2 text-sm font-medium text-over">
+          <p role="alert" className="mb-2 rounded-2xl bg-over-soft px-4 py-2 text-sm font-medium text-over">
             {t('error.save')}
           </p>
         )}
-      </div>
-
-      <Keypad onKey={dispatch} disabled={busy || confirming} />
-
-      <div className="shrink-0 px-4 pb-3">
         {confirming ? (
           <div role="alertdialog" aria-labelledby="delete-q" className="flex items-center gap-2">
             <p id="delete-q" className="flex-1 font-medium">
@@ -219,7 +220,7 @@ function EditForm({
             <Button variant="secondary" onClick={() => setConfirming(false)} disabled={busy}>
               {t('common.cancel')}
             </Button>
-            <Button variant="danger" onClick={() => void remove()} disabled={busy} autoFocus>
+            <Button variant="danger" onClick={() => void remove()} disabled={busy || blocked !== null} autoFocus>
               {t('edit.deleteYes')}
             </Button>
           </div>

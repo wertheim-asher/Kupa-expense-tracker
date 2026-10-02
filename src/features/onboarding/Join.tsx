@@ -7,6 +7,7 @@ import { LIMITS } from '../../config.ts'
 import { RepoError } from '../../data/repo.ts'
 import { t, type MessageKey } from '../../i18n/index.ts'
 import { Button } from '../../ui/Button.tsx'
+import { useToast } from '../../ui/Toast.tsx'
 
 const fieldClass =
   'block min-h-12 w-full rounded-xl border border-border bg-surface px-4 text-base aria-invalid:border-over'
@@ -52,6 +53,7 @@ function Join({ onJoined }: { onJoined: () => void }) {
   const navigate = useNavigate()
   const back = useBack('/welcome')
   const { repo, refresh } = useData()
+  const toast = useToast()
   const [code, setCode] = useState(() => normalizeCode(params.code ?? ''))
   const [name, setName] = useState('')
   // Coming back from another device: the personal code replaces the name.
@@ -88,7 +90,7 @@ function Join({ onJoined }: { onJoined: () => void }) {
     if (rejoin) {
       // With the second seat free, taking a seat back also changes the invite code (so the old
       // device cannot walk back in). Any link already sent to the partner stops working, so go
-      // straight to the invite screen to send the new one.
+      // straight to the invite screen to send the new one. That screen also says the personal code changed.
       const household = await repo.getHousehold().catch(() => null)
       if (household && household.inviteCode !== code) {
         navigate('/invite', { replace: true, state: { justCreated: true, inviteChanged: true } })
@@ -98,6 +100,8 @@ function Join({ onJoined }: { onJoined: () => void }) {
     }
     await refresh()
     navigate('/', { replace: true })
+    // The personal code just used has changed on the server; the old one will not work again.
+    if (rejoin) toast.show({ message: t('join.personalChanged'), durationMs: 8000 })
   }
 
   return (

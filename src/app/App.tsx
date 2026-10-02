@@ -49,11 +49,11 @@ function Root() {
 /** Shared backend only: on-device and demo modes work the same offline. */
 function OfflineBanner() {
   const online = useOnline()
-  if (online) return null
+  // The status region stays mounted and only its content changes, so screen readers announce it.
   return (
-    <p role="status" className="bg-text px-4 py-2 text-center text-sm font-medium text-white">
-      {t('offline.banner')}
-    </p>
+    <div role="status">
+      {!online && <p className="bg-text px-4 py-2 text-center text-sm font-medium text-white">{t('offline.banner')}</p>}
+    </div>
   )
 }
 

@@ -1,7 +1,7 @@
 // The real backend (SPEC sections 3 and 4): anonymous auth, one shared household per
 // couple, row level security on the server, realtime updates between partners.
 
-import type { PostgrestError, RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
+import { isAuthRetryableFetchError, type PostgrestError, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js'
 import type { CategoryId } from '../domain/categories.ts'
 import { todayInIsrael } from '../domain/cycle.ts'
 import type {
@@ -329,9 +329,10 @@ export class SupabaseRepo implements Repo {
     }
     const { data, error: authError } = await this.sb.auth.getSession()
     if (!data.session) {
-      // Offline with an expired token the session cannot be refreshed; keep using this device's household.
+      // Offline (or the server unreachable) with an expired token the session cannot be refreshed;
+      // keep using this device's household. Any other auth error means the login is really gone.
       const cached = this.cachedSession()
-      if (cached && (authError || isOffline())) {
+      if (cached && (isOffline() || isAuthRetryableFetchError(authError))) {
         this.setSession(cached)
         return { ...cached }
       }
@@ -384,6 +385,8 @@ export class SupabaseRepo implements Repo {
       p_personal_code: personalCode ?? null,
     })
     if (error) throw toRepoError(error)
+    // A rejoin changed this seat's personal code: never show the old one from the cache.
+    offlineCache.update({ personalCode: undefined })
     const result = data as { household_id: string; member_id: string }
     this.setSession({ householdId: result.household_id, memberId: result.member_id })
     return { householdId: result.household_id, memberId: result.member_id }
@@ -391,9 +394,22 @@ export class SupabaseRepo implements Repo {
 
   async getMyPersonalCode(): Promise<string | null> {
     const { memberId } = this.require()
+    // Kept on this device too: the disconnect warning must show it even offline, or the way back is lost.
+    const cached = () => {
+      const entry = offlineCache.get().personalCode
+      if (entry?.memberId === memberId) return entry.code
+      throw new RepoError('network')
+    }
+    if (isOffline()) return cached()
     const { data, error } = await this.sb.from('member_secrets').select('personal_code').eq('member_id', memberId).maybeSingle()
-    if (error) throw toRepoError(error)
-    return (data as { personal_code: string } | null)?.personal_code ?? null
+    if (error) {
+      const repoError = toRepoError(error)
+      if (repoError.code === 'network') return cached()
+      throw repoError
+    }
+    const code = (data as { personal_code: string } | null)?.personal_code ?? null
+    offlineCache.update({ personalCode: { memberId, code } })
+    return code
   }
 
   async getHousehold(): Promise<Household> {

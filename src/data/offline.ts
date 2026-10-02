@@ -26,6 +26,8 @@ export interface OfflineCache {
   members?: Member[]
   /** Expense lists by "from|toExclusive". */
   expenses?: Record<string, Expense[]>
+  /** This member's personal code (null: the server has none), for the disconnect warning offline. */
+  personalCode?: { memberId: string; code: string | null }
 }
 
 const OUTBOX_KEY = `${APP.slug}.outbox.v1`

@@ -30,7 +30,7 @@ export const he = {
   'error.network': 'אין חיבור לאינטרנט. מנסים שוב כשהחיבור חוזר.',
 
   'invite.title': 'עכשיו מזמינים את בן או בת הזוג', // SPEC
-  'invite.body': 'שולחים את הקישור, ומי שנכנס דרכו מצטרף לקופה הזאת.',
+  'invite.body': 'שולחים את הקישור, ודרכו מצטרפים לקופה הזאת.',
   'invite.codeLabel': 'קוד ההזמנה',
   'invite.share': 'שליחת הזמנה', // SPEC
   'invite.later': 'אעשה את זה אחר כך', // SPEC
@@ -48,6 +48,7 @@ export const he = {
   'join.personalHelp': 'מופיע בהגדרות במכשיר הקודם. כך חוזרים למקום שלך עם כל ההיסטוריה.',
   'join.personalLength': 'הקוד האישי צריך להיות 12 תווים.',
   'join.personalInvalid': 'הקוד האישי לא מתאים לקופה הזאת. כדאי לבדוק אותו שוב.',
+  'join.personalChanged': 'חזרת למקום שלך. הקוד האישי התחלף, והקוד החדש נמצא בהגדרות.',
   'join.rejoinSubmit': 'חזרה לקופה',
   'join.submit': 'הצטרפות',
   'join.codeInvalid': 'הקוד צריך להיות 6 תווים.',
@@ -141,7 +142,9 @@ export const he = {
   'settings.disconnectWarn': 'כדאי לשמור את קוד ההזמנה לפני. בלעדיו אי אפשר לחזור.', // SPEC
   'settings.disconnectCode': 'קוד ההזמנה: {code}',
   'settings.personalCode': 'הקוד האישי שלך: {code}',
-  'settings.personalHelp': 'שומרים אותו יחד עם קוד ההזמנה. שניהם יחד מחזירים אותך למקום שלך ממכשיר אחר.',
+  'settings.personalHelp':
+    'שומרים אותו יחד עם קוד ההזמנה. שניהם יחד מחזירים אותך למקום שלך ממכשיר אחר. אחרי כל שימוש הקוד מתחלף, והחדש מופיע כאן.',
+  'settings.personalWaiting': 'הקוד האישי עוד לא נטען, ובלעדיו אי אפשר לחזור. צריך חיבור כדי לראות אותו לפני הניתוק.',
   'settings.disconnectSyncYes': 'כן, לנתק',
   'settings.disconnectPending': 'יש הוצאות שעוד לא נשלחו. מתחברים לאינטרנט ומנסים שוב, כדי שהן לא יאבדו.',
 

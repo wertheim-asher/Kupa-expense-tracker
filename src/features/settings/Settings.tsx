@@ -15,6 +15,7 @@ import { Button } from '../../ui/Button.tsx'
 import { MemberChip } from '../../ui/MemberChip.tsx'
 import { Money } from '../../ui/Money.tsx'
 import { useToast } from '../../ui/Toast.tsx'
+import { useOnline } from '../../ui/useOnline.ts'
 import { syncEnabled } from '../../data/supabase.ts'
 import { RepoError } from '../../data/repo.ts'
 import { InviteCode, ShareInviteButton } from '../onboarding/InviteShare.tsx'
@@ -35,7 +36,9 @@ export function Settings() {
   const saved = () => toast.show({ message: t('settings.saved') })
 
   // This member's private code for taking their seat back from another device (shared backend only).
-  const [personalCode, setPersonalCode] = useState<string | null>(null)
+  // undefined: not known yet (loading, or offline with nothing cached); null: there is none.
+  const [personalCode, setPersonalCode] = useState<string | null | undefined>(undefined)
+  const online = useOnline()
   useEffect(() => {
     if (!syncEnabled || mode === 'demo') return
     let cancelled = false
@@ -48,7 +51,8 @@ export function Settings() {
     return () => {
       cancelled = true
     }
-  }, [repo, mode])
+    // Tries again when the connection comes back.
+  }, [repo, mode, online])
   const failed = () => toast.show({ message: t('toast.actionFailed') })
 
   const exportCsv = async (type: 'expenses' | 'events') => {
@@ -425,10 +429,12 @@ function DisconnectCard({
   /** Resolves false when nothing changed (for example unsent expenses), so the buttons come back. */
   onConfirm: () => Promise<boolean>
   inviteCode: string | null
-  personalCode: string | null
+  /** undefined while not known: disconnecting then could lose the way back, so it waits. */
+  personalCode: string | null | undefined
 }) {
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
+  const waitingForCode = inviteCode !== null && personalCode === undefined
   return (
     <Card title={t('settings.danger')}>
       <div className="flex flex-col gap-3 p-4">
@@ -448,6 +454,7 @@ function DisconnectCard({
                       <bdi className="font-bold tracking-[0.1em]">{groupCode(personalCode)}</bdi>
                     </p>
                   )}
+                  {waitingForCode && <p className="mt-2">{t('settings.personalWaiting')}</p>}
                 </>
               ) : (
                 <p>{t('settings.disconnectWarnLocal')}</p>
@@ -460,7 +467,7 @@ function DisconnectCard({
               <Button
                 variant="danger"
                 autoFocus
-                disabled={busy}
+                disabled={busy || waitingForCode}
                 onClick={async () => {
                   setBusy(true)
                   if (!(await onConfirm())) setBusy(false)

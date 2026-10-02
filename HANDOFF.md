@@ -21,18 +21,14 @@ Goal: shared-budget PWA for couples (Hebrew RTL): log an expense in 3 taps, alwa
 ## Files changed on `sync` vs `main` (31)
 supabase/migrations/{0001_init,0002_harder_codes}.sql; src/data/{supabase,supabaseRepo,offline,mode,repo,localStoreRepo}.ts + offline.test.ts; src/features/onboarding/{Join,Invite,InviteShare,Create,Welcome}.tsx + Join.test.ts; src/features/{settings/Settings,edit-expense/EditSheet,home/Home}.tsx; src/app/{App,DataProvider}.tsx; src/ui/useOnline.ts; src/i18n/he.ts; src/domain/types.ts; src/vite-env.d.ts; scripts/test-rls.mjs; vite.config.ts; package*.json; SETUP.md; README.md; BUILD_LOG.md.
 
-## Open problems (client review, confirmed, NOT fixed; client-only)
-1. [medium] EditSheet.tsx: at 360x740 the offline/pending "blocked" message sits below the keypad; move it into the footer above Save/Delete and disable keypad/categories while blocked.
-2. [medium] Settings.tsx: if the personal code fails to load, the disconnect warning omits it (lockout risk). Cache it in offlineCache; disable "כן, לנתק" until it is known.
-3. [low] supabaseRepo.ts getSession: falls back to the cached session on any auth error; limit that to offline / retryable fetch errors.
-4. [low] Join.tsx: the personal code rotates after every rejoin, but the UI never says so; add a notice and a line in settings.personalHelp.
-5. [low] InviteShare.tsx: aria-label on a <p> is ignored; render the code aria-hidden plus an sr-only span with spaced letters.
-6. [low] App.tsx offline banner (and the edit-sheet message): keep the role=status container mounted and toggle only its text.
-7. [low] EditSheet.tsx: the delete confirmation stays enabled if the connection drops; disable it when blocked.
-8. [low] he.ts `invite.body` is masculine singular; use 'שולחים את הקישור, ודרכו מצטרפים לקופה הזאת.'
+## Client review: fixed on 2026-10-02 (10:30 Israel time)
+All 8 open problems are fixed, plus one found while checking: "Couldn't save" after a failed edit was also hidden under the keypad at 360x740. Details in BUILD_LOG (Decisions and Problems, 2026-10-02). 172 unit tests pass; headless checks with a fake server at 360x740 and 390x844 pass.
+- The work is on branch `claude/epic-galileo-bn5lcb` (= `sync` + 1 commit). `sync` and the preview get it only after Asher OKs a fast-forward push to `sync`.
+- E2E scripts: the visible invite code is now `p[aria-hidden=true]`, with a separate `sr-only` span for screen readers. A script that reads the code from the page text must read the `<p>`.
+- Known, not fixed: at 375x667 (iPhone SE) the edit sheet's date field is under the keypad until the area above it is scrolled (same on `main`).
 
 ## Next steps
-1. `git pull` on `sync`; fix 1-8; `npx tsc --noEmit && npm test`; log the client review (17 confirmed: 8 fixed in 293cad1, 8 open) in BUILD_LOG Problems; commit + push.
+1. Done: fixes 1-8, tests, BUILD_LOG. Left: fast-forward `sync` to the fix commit (needs Asher's OK), so the preview rebuilds.
 2. Re-run on the preview with BASE=<preview url>: sync-e2e.mjs, sync-offline.mjs (RELOAD_OFFLINE=1), preview-regression.mjs in C:\Users\aholi\AppData\Local\Temp\claude\C--Users-aholi-Documents-claude-projects-pm-course-final-project\ac63e82d-bb0b-4a4b-bbfb-3046fe386f4f\scratchpad\shots (playwright-core installed there; if gone, test by hand).
 3. Asher: two-phone test on the preview (create, send invite link, join, partner expense in under 2 s, airplane-mode save, rejoin with personal code).
 4. If solid before 16:00: merge PR #1 (auto-deploys), check the live site, run `npm run test:rls`, update the BUILD_LOG timeline. Otherwise use the fallback above.

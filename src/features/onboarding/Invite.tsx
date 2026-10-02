@@ -16,9 +16,11 @@ export function Invite() {
         <h1 className="text-3xl font-bold">{t('invite.title')}</h1>
         <p className="max-w-xs text-lg text-muted">{t('invite.body')}</p>
         {inviteChanged && (
-          <p role="status" className="rounded-2xl bg-warn-soft px-4 py-3 text-sm font-medium text-warn">
-            {t('invite.changed')}
-          </p>
+          // Only after taking a seat back (rejoin), which also changes the personal code.
+          <div role="status" className="flex flex-col gap-2 rounded-2xl bg-warn-soft px-4 py-3 text-sm font-medium text-warn">
+            <p>{t('join.personalChanged')}</p>
+            <p>{t('invite.changed')}</p>
+          </div>
         )}
         <div className="mt-6 w-full rounded-2xl bg-surface px-6 py-6">
           <p className="text-sm text-muted">{t('invite.codeLabel')}</p>

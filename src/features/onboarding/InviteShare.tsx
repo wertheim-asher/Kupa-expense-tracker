@@ -7,12 +7,17 @@ export function inviteLink(code: string): string {
   return `${window.location.origin}/join/${code}`
 }
 
-/** The invite code, big and readable, letters spaced for reading aloud. */
+/** The invite code, big and readable. */
 export function InviteCode({ code, className = 'text-4xl' }: { code: string; className?: string }) {
+  // aria-label on a <p> is ignored, so screen readers get their own copy, letter by letter. It sits
+  // outside the visible code, so selecting and copying the code copies only the code.
   return (
-    <p className={`font-bold tracking-[0.25em] tabular-nums ${className}`} dir="ltr" aria-label={code.split('').join(' ')}>
-      {code}
-    </p>
+    <>
+      <p aria-hidden="true" className={`font-bold tracking-[0.25em] tabular-nums ${className}`} dir="ltr">
+        {code}
+      </p>
+      <span className="sr-only">{code.split('').join(' ')}</span>
+    </>
   )
 }
 
