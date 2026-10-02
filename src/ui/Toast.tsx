@@ -50,7 +50,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toast && (
           <div
             key={toast.id}
-            className="pointer-events-auto flex w-full animate-toast-in items-center gap-2 rounded-2xl bg-text py-2 ps-4 pe-2 text-white shadow-lg"
+            className="pointer-events-auto flex w-full animate-toast-in items-center gap-2 rounded-2xl bg-text py-2 ps-4 pe-2 text-bg shadow-lg"
           >
             <p className="min-w-0 flex-1 py-1.5">{toast.message}</p>
             {toast.action && (
@@ -61,7 +61,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   setToast(null)
                   action?.onClick()
                 }}
-                className="min-h-12 shrink-0 touch-manipulation rounded-full px-4 font-medium text-primary-soft active:bg-white/10"
+                className="min-h-12 shrink-0 touch-manipulation rounded-full px-4 font-medium text-primary-soft active:bg-bg/10"
               >
                 {toast.action.label}
               </button>

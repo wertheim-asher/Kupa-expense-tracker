@@ -109,7 +109,7 @@ export function Home() {
               type="button"
               onClick={startAdd}
               aria-label={t('home.add')}
-              className="pointer-events-auto absolute end-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] grid size-16 touch-manipulation place-items-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 transition-transform duration-150 ease-out active:scale-95"
+              className="pointer-events-auto absolute end-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] grid size-16 touch-manipulation place-items-center rounded-full bg-primary text-on-primary shadow-lg shadow-primary/30 transition-transform duration-150 ease-out active:scale-95"
             >
               <Plus size={32} strokeWidth={2.5} aria-hidden="true" />
             </button>

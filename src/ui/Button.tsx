@@ -4,10 +4,10 @@ import { cls } from './cls.ts'
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'danger-ghost'
 
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-primary text-white active:brightness-95',
+  primary: 'bg-primary text-on-primary active:brightness-95',
   secondary: 'border border-border bg-surface text-text active:bg-bg',
   ghost: 'text-primary active:bg-primary-soft/60',
-  danger: 'bg-over text-white active:brightness-95',
+  danger: 'bg-over text-on-over active:brightness-95',
   'danger-ghost': 'text-over active:bg-over-soft',
 }
 

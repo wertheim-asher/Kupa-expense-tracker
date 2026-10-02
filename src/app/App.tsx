@@ -52,7 +52,7 @@ function OfflineBanner() {
   // The status region stays mounted and only its content changes, so screen readers announce it.
   return (
     <div role="status">
-      {!online && <p className="bg-text px-4 py-2 text-center text-sm font-medium text-white">{t('offline.banner')}</p>}
+      {!online && <p className="bg-text px-4 py-2 text-center text-sm font-medium text-bg">{t('offline.banner')}</p>}
     </div>
   )
 }
