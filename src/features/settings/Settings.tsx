@@ -14,11 +14,12 @@ import { t, tx } from '../../i18n/index.ts'
 import { Button } from '../../ui/Button.tsx'
 import { MemberChip } from '../../ui/MemberChip.tsx'
 import { Money } from '../../ui/Money.tsx'
+import { CopyButton } from '../../ui/CopyButton.tsx'
 import { useToast } from '../../ui/Toast.tsx'
 import { useOnline } from '../../ui/useOnline.ts'
 import { syncEnabled } from '../../data/supabase.ts'
 import { RepoError } from '../../data/repo.ts'
-import { InviteCode, ShareInviteButton } from '../onboarding/InviteShare.tsx'
+import { ShareInviteButton } from '../onboarding/InviteShare.tsx'
 
 const DAYS = Array.from({ length: LIMITS.maxCycleDay - LIMITS.minCycleDay + 1 }, (_, i) => i + LIMITS.minCycleDay)
 
@@ -107,25 +108,25 @@ export function Settings() {
 
         {syncEnabled && mode !== 'demo' && (
           <Card title={t('settings.invite')}>
-            {members.length < 2 ? (
-              <div className="flex flex-col items-center gap-3 p-4 text-center">
-                <p className="text-sm text-muted">{t('invite.codeLabel')}</p>
-                <InviteCode code={household.inviteCode} className="text-3xl" />
-                <ShareInviteButton code={household.inviteCode} className="w-full" />
-              </div>
-            ) : (
-              // Both seats taken: the code stays visible, small, for getting back in from another device.
-              <p className="p-4 text-sm text-muted">{t('invite.recovery', { code: household.inviteCode })}</p>
-            )}
-            {personalCode && (
-              <div className="border-t border-border p-4 text-sm">
-                <p className="font-medium">
-                  {t('settings.personalCode', { code: '' })}
-                  <bdi className="font-bold tracking-[0.1em]">{groupCode(personalCode)}</bdi>
-                </p>
-                <p className="mt-1 text-muted">{t('settings.personalHelp')}</p>
-              </div>
-            )}
+            <div className="divide-y divide-border">
+              <CodeRow
+                label={t('invite.codeLabel')}
+                code={household.inviteCode}
+                copyLabel={t('settings.copyInvite')}
+                // A free seat: the code is for inviting the partner. Both seats taken: for getting back in.
+                help={t(members.length < 2 ? 'settings.inviteHelpOpen' : 'settings.inviteHelp')}
+              >
+                {members.length < 2 && <ShareInviteButton code={household.inviteCode} className="mt-3 w-full" />}
+              </CodeRow>
+              {personalCode && (
+                <CodeRow
+                  label={t('settings.personalLabel')}
+                  code={groupCode(personalCode)}
+                  copyLabel={t('settings.copyPersonal')}
+                  help={t('settings.personalHelp')}
+                />
+              )}
+            </div>
           </Card>
         )}
 
@@ -259,6 +260,37 @@ export function Settings() {
 /** "ABCDEFGHJKMN" → "ABCD EFGH JKMN", easier to copy down. */
 function groupCode(code: string): string {
   return code.replace(/(.{4})(?=.)/g, '$1 ')
+}
+
+/** One code per row: what it is, the code itself (bold, with a copy button), then what it is for. */
+function CodeRow({
+  label,
+  code,
+  copyLabel,
+  help,
+  children,
+}: {
+  label: string
+  code: string
+  copyLabel: string
+  help: string
+  children?: ReactNode
+}) {
+  return (
+    <div className="p-4">
+      <p className="text-sm font-medium text-muted">{label}</p>
+      <div className="mt-1 flex items-center gap-1">
+        <p aria-hidden="true" dir="ltr" className="text-2xl font-bold tracking-[0.12em] tabular-nums">
+          {code}
+        </p>
+        {/* Screen readers get the code letter by letter; it sits apart so copying by hand copies only the code. */}
+        <span className="sr-only">{code.replace(/ /g, '').split('').join(' ')}</span>
+        <CopyButton text={code} label={copyLabel} className="text-primary" />
+      </div>
+      <p className="mt-1 text-sm text-muted">{help}</p>
+      {children}
+    </div>
+  )
 }
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
@@ -444,14 +476,16 @@ function DisconnectCard({
               {inviteCode ? (
                 <>
                   <p>{t('settings.disconnectWarn')}</p>
-                  <p className="mt-2">
+                  <p className="mt-1 flex flex-wrap items-center gap-x-1">
                     {t('settings.disconnectCode', { code: '' })}
                     <bdi className="font-bold tracking-[0.2em]">{inviteCode}</bdi>
+                    <CopyButton text={inviteCode} label={t('settings.copyInvite')} className="active:bg-over/10" />
                   </p>
                   {personalCode && (
-                    <p>
+                    <p className="flex flex-wrap items-center gap-x-1">
                       {t('settings.personalCode', { code: '' })}
                       <bdi className="font-bold tracking-[0.1em]">{groupCode(personalCode)}</bdi>
+                      <CopyButton text={groupCode(personalCode)} label={t('settings.copyPersonal')} className="active:bg-over/10" />
                     </p>
                   )}
                   {waitingForCode && <p className="mt-2">{t('settings.personalWaiting')}</p>}

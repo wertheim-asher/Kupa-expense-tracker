@@ -22,6 +22,8 @@ export interface Repo {
   joinHousehold(code: string, displayName: string, personalCode?: string): Promise<JoinResult>
   /** This member's private personal code (shared backend only; null on device-only storage). */
   getMyPersonalCode(): Promise<string | null>
+  /** The household as last seen on this device, without asking the server (shared backend only). */
+  peekHousehold?(): Household | null
   getHousehold(): Promise<Household>
   getMembers(): Promise<Member[]>
   /** Non-deleted expenses with from <= spentOn < toExclusive (ISO dates). */

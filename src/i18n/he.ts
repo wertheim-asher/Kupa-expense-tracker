@@ -10,6 +10,8 @@ export const he = {
   'common.save': 'שמירה',
   'common.close': 'סגירה',
   'common.back': 'חזרה',
+  'common.copied': 'הקוד הועתק',
+  'common.copyFailed': 'לא הצלחנו להעתיק. אפשר לסמן את הקוד ולהעתיק אותו.',
 
   'welcome.tagline': 'תמיד יודעים כמה נשאר עד החיוב הבא', // SPEC
   'welcome.create': 'פתיחת קופה משותפת', // SPEC
@@ -37,7 +39,6 @@ export const he = {
   'invite.shareText': 'הצטרפו לקופה המשותפת שלנו: {link}', // SPEC
   'invite.changed': 'קוד ההזמנה התחדש, כדי שהמכשיר הקודם לא יוכל להיכנס. קישור שכבר נשלח לא יעבוד, אז שולחים את החדש.',
   'invite.copied': 'הקישור הועתק. אפשר להדביק אותו בהודעה.',
-  'invite.recovery': 'קוד ההזמנה: {code}. שומרים אותו כדי לחזור לקופה ממכשיר אחר.',
 
   'join.title': 'הצטרפות לקופה משותפת',
   'join.code': 'קוד הזמנה', // SPEC
@@ -142,6 +143,11 @@ export const he = {
   'settings.disconnectWarn': 'כדאי לשמור את קוד ההזמנה לפני. בלעדיו אי אפשר לחזור.', // SPEC
   'settings.disconnectCode': 'קוד ההזמנה: {code}',
   'settings.personalCode': 'הקוד האישי שלך: {code}',
+  'settings.personalLabel': 'הקוד האישי שלך',
+  'settings.inviteHelp': 'שומרים אותו כדי לחזור לקופה ממכשיר אחר.',
+  'settings.inviteHelpOpen': 'בן או בת הזוג מצטרפים לקופה עם הקוד הזה. שומרים אותו גם כדי לחזור ממכשיר אחר.',
+  'settings.copyInvite': 'העתקת קוד ההזמנה',
+  'settings.copyPersonal': 'העתקת הקוד האישי',
   'settings.personalHelp':
     'שומרים אותו יחד עם קוד ההזמנה. שניהם יחד מחזירים אותך למקום שלך ממכשיר אחר. אחרי כל שימוש הקוד מתחלף, והחדש מופיע כאן.',
   'settings.personalWaiting': 'הקוד האישי עוד לא נטען, ובלעדיו אי אפשר לחזור. צריך חיבור כדי לראות אותו לפני הניתוק.',

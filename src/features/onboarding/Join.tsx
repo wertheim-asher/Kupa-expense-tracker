@@ -66,6 +66,12 @@ function Join({ onJoined }: { onJoined: () => void }) {
   const nameRef = useRef<HTMLInputElement>(null)
   const personalRef = useRef<HTMLInputElement>(null)
 
+  // A new attempt: the answer to the last one (for example "wrong personal code") no longer applies.
+  const edit = (change: () => void) => {
+    change()
+    setError(null)
+  }
+
   const codeOk = code.length === 6
   const nameOk = name.trim().length >= 1 && name.trim().length <= LIMITS.maxNameLength
   const personalOk = personal.length === 12
@@ -127,10 +133,10 @@ function Join({ onJoined }: { onJoined: () => void }) {
             ref={codeRef}
             id="join-code"
             value={code}
-            onChange={(e) => setCode(normalizeCode(e.target.value))}
+            onChange={(e) => edit(() => setCode(normalizeCode(e.target.value)))}
             onPaste={(e) => {
               e.preventDefault()
-              setCode(normalizeCode(e.clipboardData.getData('text')))
+              edit(() => setCode(normalizeCode(e.clipboardData.getData('text'))))
             }}
             dir="ltr"
             autoCapitalize="characters"
@@ -156,7 +162,7 @@ function Join({ onJoined }: { onJoined: () => void }) {
               ref={personalRef}
               id="join-personal"
               value={personal}
-              onChange={(e) => setPersonal(normalizePersonalCode(e.target.value))}
+              onChange={(e) => edit(() => setPersonal(normalizePersonalCode(e.target.value)))}
               dir="ltr"
               autoCapitalize="characters"
               autoComplete="off"
@@ -180,7 +186,7 @@ function Join({ onJoined }: { onJoined: () => void }) {
               ref={nameRef}
               id="join-name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => edit(() => setName(e.target.value))}
               maxLength={LIMITS.maxNameLength}
               autoComplete="given-name"
               enterKeyHint="go"

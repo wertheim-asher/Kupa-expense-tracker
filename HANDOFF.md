@@ -27,6 +27,9 @@ All 8 open problems are fixed, plus one found while checking: "Couldn't save" af
 - E2E scripts: the visible invite code is now `p[aria-hidden=true]`, with a separate `sr-only` span for screen readers. A script that reads the code from the page text must read the `<p>`.
 - Known, not fixed: at 375x667 (iPhone SE) the edit sheet's date field is under the keypad until the area above it is scrolled (same on `main`).
 
+## Round 2 (2026-10-02, about 14:40 Israel time)
+Asher's two-phone test passed. Done since: code rows with copy buttons in settings and in the disconnect warning; join error clears when typing; shorter keypad keys on screens under 800px tall (edit sheet fit on his Android); speed (save to home 657 to 341 ms, reopen 557 to 405 ms with a fake backend at 150 ms per request). Details in BUILD_LOG.
+
 ## Next steps
 1. Done: fixes 1-8, tests, BUILD_LOG. Left: fast-forward `sync` to the fix commit (needs Asher's OK), so the preview rebuilds.
 2. Re-run on the preview with BASE=<preview url>: sync-e2e.mjs, sync-offline.mjs (RELOAD_OFFLINE=1), preview-regression.mjs in C:\Users\aholi\AppData\Local\Temp\claude\C--Users-aholi-Documents-claude-projects-pm-course-final-project\ac63e82d-bb0b-4a4b-bbfb-3046fe386f4f\scratchpad\shots (playwright-core installed there; if gone, test by hand).

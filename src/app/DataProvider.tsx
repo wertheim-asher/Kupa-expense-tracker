@@ -83,9 +83,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (!session) {
         next = { status: 'no-session', today, ...EMPTY }
       } else {
-        const [household, members] = await Promise.all([repo.getHousehold(), repo.getMembers()])
+        // A refresh (after a save, a partner's change, a return to the app) almost always stays in the
+        // cycle on screen, and an app launch in the cycle seen last time: ask for its expenses together
+        // with the household, not one after the other.
+        const shown = snapshotRef.current.household ?? repo.peekHousehold?.() ?? null
+        const guess = shown?.id === session.householdId ? cycleFor(today, shown.cycleStartDay) : null
+        const [household, members, guessed] = await Promise.all([
+          repo.getHousehold(),
+          repo.getMembers(),
+          guess ? repo.listExpenses({ from: guess.start, toExclusive: guess.endExclusive }) : null,
+        ])
         const cycle = cycleFor(today, household.cycleStartDay)
-        const expenses = await repo.listExpenses({ from: cycle.start, toExclusive: cycle.endExclusive })
+        const expenses =
+          guessed && guess?.start === cycle.start && guess.endExclusive === cycle.endExclusive
+            ? guessed
+            : await repo.listExpenses({ from: cycle.start, toExclusive: cycle.endExclusive })
         next = { status: 'ready', today, session, household, members, cycle, expenses }
       }
       if (seq !== loadSeq.current) return null

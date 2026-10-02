@@ -135,6 +135,8 @@ const rowFor = (item: OutboxItem) => ({
 export class SupabaseRepo implements Repo {
   private readonly sb: SupabaseClient
   private session: Session | null = null
+  /** The login the session was looked up for; while it stays the same, refreshes skip that lookup. */
+  private sessionUserId: string | null = null
   private channel: RealtimeChannel | null = null
   private channelHousehold: string | null = null
   private readonly listeners = new Set<() => void>()
@@ -164,8 +166,9 @@ export class SupabaseRepo implements Repo {
     if (error) throw toRepoError(error)
   }
 
-  private setSession(session: Session | null): void {
+  private setSession(session: Session | null, userId: string | null = null): void {
     this.session = session
+    this.sessionUserId = session ? userId : null
     if (session) {
       this.ensureChannel()
       void this.flushPendingEvents()
@@ -328,6 +331,12 @@ export class SupabaseRepo implements Repo {
       return { ...offlineSession }
     }
     const { data, error: authError } = await this.sb.auth.getSession()
+    // Already looked up for this login (a refresh after a save, a partner's change, a return to the
+    // app): skip the round trip to the server, so the screen updates sooner.
+    if (data.session && this.session && this.sessionUserId === data.session.user.id) {
+      this.setSession(this.session, this.sessionUserId) // Still sends anything saved offline, as before.
+      return { ...this.session }
+    }
     if (!data.session) {
       // Offline (or the server unreachable) with an expired token the session cannot be refreshed;
       // keep using this device's household. Any other auth error means the login is really gone.
@@ -354,7 +363,7 @@ export class SupabaseRepo implements Repo {
       throw repoError
     }
     const row = rows?.[0] as { id: string; household_id: string } | undefined
-    this.setSession(row ? { householdId: row.household_id, memberId: row.id } : null)
+    this.setSession(row ? { householdId: row.household_id, memberId: row.id } : null, data.session.user.id)
     offlineCache.update({ session: this.session ?? undefined })
     return this.session ? { ...this.session } : null
   }
@@ -390,6 +399,10 @@ export class SupabaseRepo implements Repo {
     const result = data as { household_id: string; member_id: string }
     this.setSession({ householdId: result.household_id, memberId: result.member_id })
     return { householdId: result.household_id, memberId: result.member_id }
+  }
+
+  peekHousehold(): Household | null {
+    return offlineCache.get().household ?? null
   }
 
   async getMyPersonalCode(): Promise<string | null> {

@@ -1,13 +1,26 @@
 import { defineConfig } from 'vitest/config'
+import { loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { APP } from './src/config.ts'
 
-export default defineConfig({
+/** Builds with the shared backend open the connection to it while the app's code still downloads. */
+function preconnect(url: string | undefined): Plugin {
+  return {
+    name: 'kupa-preconnect',
+    transformIndexHtml() {
+      if (!url) return []
+      return [{ tag: 'link', attrs: { rel: 'preconnect', href: new URL(url).origin, crossorigin: '' }, injectTo: 'head' }]
+    },
+  }
+}
+
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     tailwindcss(),
+    preconnect(loadEnv(mode, '.', 'VITE_').VITE_SUPABASE_URL),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
@@ -48,4 +61,4 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
   },
-})
+}))

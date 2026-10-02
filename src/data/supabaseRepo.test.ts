@@ -8,6 +8,8 @@ function fakeClient(answers: {
   authSession?: { data: { session: unknown }; error: unknown }
   personalCode?: { data: unknown; error: unknown }
   join?: { data: unknown; error: unknown }
+  /** Rows for the "which member is this login" lookup. */
+  memberRows?: unknown[]
 }) {
   const query = (result: unknown) => {
     const chain: Record<string, unknown> = {}
@@ -22,7 +24,14 @@ function fakeClient(answers: {
       getSession: async () => answers.authSession ?? { data: { session: null }, error: null },
       signInAnonymously: async () => ({ error: null }),
     },
-    from: (table: string) => query(table === 'member_secrets' ? answers.personalCode : { data: [], error: null }),
+    from: (table: string) =>
+      query(
+        table === 'member_secrets'
+          ? answers.personalCode
+          : table === 'members'
+            ? { data: answers.memberRows ?? [], error: null }
+            : { data: [], error: null },
+      ),
     rpc: async () => answers.join,
     removeChannel: async () => undefined,
   } as unknown as SupabaseClient
@@ -84,5 +93,21 @@ describe('getSession with an expired login', () => {
       fakeClient({ authSession: { data: { session: null }, error: new AuthApiError('Invalid Refresh Token', 400, 'refresh_token_not_found') } }),
     )
     expect(await repo.getSession()).toBeNull()
+  })
+})
+
+describe('getSession on a refresh', () => {
+  it('asks the server which member this login is only once while the login stays the same', async () => {
+    const client = fakeClient({
+      authSession: { data: { session: { user: { id: 'u1' } } }, error: null },
+      memberRows: [{ id: 'm1', household_id: 'h1' }],
+    })
+    const from = vi.spyOn(client, 'from')
+    const repo = new SupabaseRepo(client)
+    expect(await repo.getSession()).toEqual({ householdId: 'h1', memberId: 'm1' })
+    const lookups = () => from.mock.calls.filter(([table]) => table === 'members').length
+    expect(lookups()).toBe(1)
+    expect(await repo.getSession()).toEqual({ householdId: 'h1', memberId: 'm1' })
+    expect(lookups()).toBe(1)
   })
 })

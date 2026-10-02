@@ -48,7 +48,8 @@ export function Keypad({ onKey, disabled = false }: { onKey: (action: KeypadActi
               const action = actionFor(key)
               if (action) onKey(action)
             }}
-            className="grid min-h-16 touch-manipulation select-none place-items-center rounded-2xl bg-bg text-[26px] font-medium tabular-nums transition-colors duration-150 active:bg-border disabled:opacity-50"
+            // Shorter keys when the screen is short (browser bars take room), so the sheet above fits.
+            className="grid min-h-16 [@media(max-height:800px)]:min-h-[clamp(48px,7.2dvh,52px)] touch-manipulation select-none place-items-center rounded-2xl bg-bg text-[26px] font-medium tabular-nums transition-colors duration-150 active:bg-border disabled:opacity-50"
           >
             {key === 'back' ? <Delete size={28} aria-hidden="true" /> : <span aria-hidden="true">{key}</span>}
           </button>
