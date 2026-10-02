@@ -68,6 +68,8 @@
 | 2026-10-02 | History: arrows next to the cycle label move between cycles, back as far as expenses can be dated (one year, 12 cycles); a "חזרה למחזור הנוכחי" chip returns. A past cycle shows what was left at its end ("נשארו ... בסוף המחזור", "המחזור הזה הסתיים"), its expenses can be edited, and it has no "+". A cycle from another year shows the year. | SPEC 7.2 (P1). The one-year limit matches the oldest date an expense can have. New expenses always belong to the current cycle, so "+" would mislead there. |
 | 2026-10-02 | Demo "simulate partner expense": a settings button (demo only) goes home and 3 seconds later the partner adds ₪84 groceries through the same change path as a synced expense, with the new-row highlight. | SPEC section 12 (P2). It shows the shared value moment on stage with no network and no second phone. |
 | 2026-10-02 | The Supabase library loads only when this device has, creates or joins a shared budget (`LazySupabaseRepo`). Screens ask `syncConfig.ts` whether sync is on, without loading the library. | A new visitor (QR code) on the welcome screen or in the demo downloads a third less: 166 KB to 109 KB compressed. The service worker still stores the library for offline use. |
+| 2026-10-02 | Pilot kit in `pilot/`: a WhatsApp invite, 3 closing questions, and `metrics.sql`, one query that gives the numbers for the 3 assumptions (logging time, cancels, daily use, cycle start days). | With two more weeks, real use by a few couples is the strongest evidence for the presentation. The query reads only counts and times, never amounts or names, as the invite promises. Checked on a real Postgres (PGlite) with test data, every number by hand. |
+| 2026-10-02 | Production builds skip changes that only touch notes, the pilot kit or the QR codes (`ignore` in `netlify.toml`, production only). Changes reach the live site in batches. | Netlify's free plan: 15 of 300 monthly credits per production deploy, and at 300 every site pauses until the cycle resets (October 13). Half was used by October 2. Deploy previews are free. |
 
 ## Problems, failures and AI limitations
 | Date | What happened | How it was solved | Time lost |
@@ -120,6 +122,8 @@
 | 2026-10-02 | Asher | Picked two small wins: the demo partner button and a faster first open. | Partner button done (see Decisions). Faster first open: done. A new visitor downloads 109 KB of code instead of 166 KB (compressed). On my fast test connection the welcome screen showed at the same time (743 vs 746 ms, CPU slowed 4x), so the gain is only on slow mobile connections: about 0.05 s on fast 4G to 0.3 s on slow 3G, by size. The earlier gains hold with it (fake backend at 150 ms: reopen 587 to 443 ms, save 663 to 342 ms). |
 | 2026-10-02 | Asher | Tested PR #2's preview: "looks great", merge. | Merged PR #2. |
 | 2026-10-02 | Asher | Ran `npm run test:rls` on his PC after both merges (16:20): all 36 checks pass against the real project ("All RLS checks passed."). This cloud session could not reach Supabase. | Logged. |
+| 2026-10-02 | Asher | The presentation moved to October 18. Picked for the two weeks: a pilot with real numbers, English and dark mode, the automatic phone test, and a weekly Supabase reminder. | Reminders set (Supabase: October 8 and 15; checklist: October 17). Pilot kit done first, because the pilot needs time. |
+| 2026-10-02 | Asher | Forwarded Netlify's email: 50% of the 300 monthly credits used (cycle September 13 to October 12). | Explained the risk (sites pause at 300) and changed how we ship: one production deploy per batch, docs-only changes skip the build. |
 
 ## Edge case results
 Verified on 2026-10-01 by four audit agents against the live site (headless Chrome with mobile emulation at 390x844 and 360x740, faked clock where a date mattered, a second tab as the stand-in for a partner) plus the unit and integration tests. Three gaps the audit found were fixed the same day and re-verified on the live site.
@@ -163,9 +167,9 @@ Verified on 2026-10-01 by four audit agents against the live site (headless Chro
 | ~~Offline outbox~~ | Un-cut in Phase 3 (Asher: "go sync", 2026-10-01), on the sync branch. With a server, logging without signal must still work. |
 | ~~Previous cycle navigation~~ | Un-cut on 2026-10-02 at Asher's request (history). |
 | ~~Date chip on the add screen~~ | Un-cut on 2026-10-01 after Asher's phone feedback (see Feedback). |
-| English toggle | deadline |
-| Dark mode | deadline |
-| Playwright smoke test | deadline |
+| English toggle | deadline. Being built after the date moved (2026-10-02). |
+| Dark mode | deadline. Being built after the date moved (2026-10-02). |
+| Playwright smoke test | deadline. Being built after the date moved (2026-10-02). |
 | ~~RLS isolation test~~ | Un-cut in Phase 3 (Asher: "go sync", 2026-10-01), on the sync branch. `npm run test:rls`, 34 checks. |
 | ~~Demo "Simulate partner expense" button~~ | Un-cut on 2026-10-02 at Asher's request. |
 | ~~Offline banner~~ | Un-cut in Phase 3 (Asher: "go sync", 2026-10-01), on the sync branch. The spec's text is true now that expenses wait to be sent. Shown with the shared backend only. |
