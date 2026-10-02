@@ -41,7 +41,10 @@ export function Settings() {
 
   // This member's private code for taking their seat back from another device (shared backend only).
   // undefined: not known yet (loading, or offline with nothing cached); null: there is none.
-  const [personalCode, setPersonalCode] = useState<string | null | undefined>(undefined)
+  // Shown at once from this device's copy, so the page does not jump when the server answers.
+  const [personalCode, setPersonalCode] = useState<string | null | undefined>(() =>
+    syncEnabled && mode !== 'demo' ? repo.peekPersonalCode?.() : undefined,
+  )
   const online = useOnline()
   useEffect(() => {
     if (!syncEnabled || mode === 'demo') return

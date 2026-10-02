@@ -65,6 +65,11 @@ export class LazySupabaseRepo implements Repo {
     return offlineCache.get().household ?? null
   }
 
+  peekPersonalCode(): string | null | undefined {
+    const { personalCode, session } = offlineCache.get()
+    return personalCode && personalCode.memberId === session?.memberId ? personalCode.code : undefined
+  }
+
   async getHousehold() {
     return (await this.load()).getHousehold()
   }

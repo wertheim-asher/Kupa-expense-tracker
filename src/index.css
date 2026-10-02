@@ -176,3 +176,33 @@
     background-color: var(--primary-soft);
   }
 }
+
+/*
+ * ₪ from the Hebrew face. Fontsource's latin-ext face also covers U+20AA and is declared later, so
+ * the shekel sign alone made home download the three latin-ext files (32 KB). Declared last, these
+ * win for that one character; the glyph is the same.
+ */
+@font-face {
+  font-family: 'Rubik';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('@fontsource/rubik/files/rubik-hebrew-400-normal.woff2') format('woff2');
+  unicode-range: U+20AA;
+}
+@font-face {
+  font-family: 'Rubik';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('@fontsource/rubik/files/rubik-hebrew-500-normal.woff2') format('woff2');
+  unicode-range: U+20AA;
+}
+@font-face {
+  font-family: 'Rubik';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('@fontsource/rubik/files/rubik-hebrew-700-normal.woff2') format('woff2');
+  unicode-range: U+20AA;
+}

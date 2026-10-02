@@ -19,6 +19,15 @@ describe('LazySupabaseRepo', () => {
     await expect(new LazySupabaseRepo().getSession()).rejects.toMatchObject({ code: 'network' })
   })
 
+  it("shows this member's cached personal code without asking the server, and never another member's", () => {
+    const repo = new LazySupabaseRepo()
+    expect(repo.peekPersonalCode()).toBeUndefined()
+    offlineCache.update({ session: { householdId: 'h1', memberId: 'm1' }, personalCode: { memberId: 'm1', code: 'ABCDEFGHJKMN' } })
+    expect(repo.peekPersonalCode()).toBe('ABCDEFGHJKMN')
+    offlineCache.update({ session: { householdId: 'h1', memberId: 'm2' } })
+    expect(repo.peekPersonalCode()).toBeUndefined()
+  })
+
   it('with a cached household it loads the library too, so an offline launch still opens', async () => {
     offlineCache.update({ session: { householdId: 'h1', memberId: 'm1' } })
     await expect(new LazySupabaseRepo().getSession()).rejects.toMatchObject({ code: 'network' })

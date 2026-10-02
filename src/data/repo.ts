@@ -27,6 +27,8 @@ export interface Repo {
   getMyPersonalCode(): Promise<string | null>
   /** The household as last seen on this device, without asking the server (shared backend only). */
   peekHousehold?(): Household | null
+  /** This member's personal code as last seen on this device (undefined: not known here). */
+  peekPersonalCode?(): string | null | undefined
   /** Demo only: the partner logs ₪84 groceries, arriving like a partner's expense does with sync. */
   simulatePartnerExpense?(): Promise<void>
   getHousehold(): Promise<Household>
