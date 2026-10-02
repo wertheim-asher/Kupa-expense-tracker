@@ -63,6 +63,8 @@
 | 2026-10-02 | Keypad keys are shorter on screens under 800px tall: 52px, down to 48px on the shortest, instead of 64px. | Real phones lose height to browser bars, and the edit sheet cut off categories and the date. 48px is still a comfortable tap target. |
 | 2026-10-02 | A refresh trusts the member already looked up for the same login instead of asking the server again. | Saves a round trip on every save and every partner update. The first load after opening the app still checks, so a device whose seat was taken back finds out on its next launch, not on the next refresh. |
 | 2026-10-02 | A copy button shows a check mark for 1.5s (and a word for screen readers), not a toast. | In the disconnect warning the toast covered the next code, so it could not be copied right away. |
+| 2026-10-02 | History: arrows next to the cycle label move between cycles, back as far as expenses can be dated (one year, 12 cycles); a "חזרה למחזור הנוכחי" chip returns. A past cycle shows what was left at its end ("נשארו ... בסוף המחזור", "המחזור הזה הסתיים"), its expenses can be edited, and it has no "+". A cycle from another year shows the year. | SPEC 7.2 (P1). The one-year limit matches the oldest date an expense can have. New expenses always belong to the current cycle, so "+" would mislead there. |
+| 2026-10-02 | Demo "simulate partner expense": a settings button (demo only) goes home and 3 seconds later the partner adds ₪84 groceries through the same change path as a synced expense, with the new-row highlight. | SPEC section 12 (P2). It shows the shared value moment on stage with no network and no second phone. |
 
 ## Problems, failures and AI limitations
 | Date | What happened | How it was solved | Time lost |
@@ -108,6 +110,10 @@
 | 2026-10-02 | Asher (two-phone test: his Android, his wife's iPhone, on the deploy preview) | Steps 1 to 5 passed: create, invite, join, a partner's expense on the other phone, an airplane-mode save (clock icon, blocked edit with the message above Save), disconnect with both codes, rejoin and the "code changed" notice; a third person was refused and used personal codes stopped working. | Logged. Two problems found in his screenshots, both fixed (see Problems). |
 | 2026-10-02 | Asher | In settings, separate the codes from their explanations: each code bold with a small copy icon, the explanation under each code. Copy icons in the disconnect warning too. | One row per code: a label, the code in bold with a copy button, the explanation under it; the Share button stays under the invite code while a seat is free. Copy buttons next to both codes in the disconnect warning. Checked at 412x728 and 360x740: each button copies exactly its code. |
 | 2026-10-02 | Asher | Optimize the whole app for speed. | Measured first (local build, a fake backend that waits 150 ms per request, medians of 5 runs): a save waited for 5 requests one after the other (the save, a member lookup, household and members, expenses). Now the member lookup runs once per login, and the expenses load together with the household. Save to home: 657 to 341 ms. Reopening the app: 557 to 405 ms. First open ever: unchanged (651 to 661 ms). A partner's change now reloads in 1 round trip instead of 3. The app also opens its connection to the backend while its code still downloads (preconnect). |
+| 2026-10-02 | Asher (round 3, screenshot) | In the disconnect warning the personal code's copy button dropped to the next line. | Fixed (see Problems). |
+| 2026-10-02 | Asher | Asked for history: viewing and editing past billing cycles. | Un-cut "previous cycle navigation" (SPEC P1) and built it after the partner-sync merge decision, on its own branch (see Decisions). |
+| 2026-10-02 | Asher | Asked whether the app should block zooming, to feel like an app and fit any phone or tablet (my view only, no change). | My view: keep zoom. iPhone Safari ignores a zoom block anyway, and blocking it fails people with low vision (WCAG 1.4.4). Accidental zoom is already prevented (no double-tap zoom on buttons, 16px inputs so iPhone does not zoom while typing). The app feel comes from installing it to the home screen: full screen, no browser bars, more room. On a tablet it is a phone-width column in the middle, which is fine for a phone-first MVP. No change. |
+| 2026-10-02 | Asher | Picked two small wins: the demo partner button and a faster first open. | Partner button done (see Decisions). Faster first open: next. |
 
 ## Edge case results
 Verified on 2026-10-01 by four audit agents against the live site (headless Chrome with mobile emulation at 390x844 and 360x740, faked clock where a date mattered, a second tab as the stand-in for a partner) plus the unit and integration tests. Three gaps the audit found were fixed the same day and re-verified on the live site.
@@ -150,13 +156,13 @@ Verified on 2026-10-01 by four audit agents against the live site (headless Chro
 | ~~Join with a code, invite screen, invite UI in settings~~ | Un-cut in Phase 3 (Asher: "go sync", 2026-10-01), on the sync branch. |
 | ~~Realtime sync between partners~~ | Un-cut in Phase 3 (Asher: "go sync", 2026-10-01), on the sync branch. |
 | ~~Offline outbox~~ | Un-cut in Phase 3 (Asher: "go sync", 2026-10-01), on the sync branch. With a server, logging without signal must still work. |
-| Previous cycle navigation | deadline |
+| ~~Previous cycle navigation~~ | Un-cut on 2026-10-02 at Asher's request (history). |
 | ~~Date chip on the add screen~~ | Un-cut on 2026-10-01 after Asher's phone feedback (see Feedback). |
 | English toggle | deadline |
 | Dark mode | deadline |
 | Playwright smoke test | deadline |
 | ~~RLS isolation test~~ | Un-cut in Phase 3 (Asher: "go sync", 2026-10-01), on the sync branch. `npm run test:rls`, 34 checks. |
-| Demo "Simulate partner expense" button | deadline |
+| ~~Demo "Simulate partner expense" button~~ | Un-cut on 2026-10-02 at Asher's request. |
 | ~~Offline banner~~ | Un-cut in Phase 3 (Asher: "go sync", 2026-10-01), on the sync branch. The spec's text is true now that expenses wait to be sent. Shown with the shared backend only. |
 | ~~`household_joined` event~~ | Un-cut in Phase 3 (Asher: "go sync", 2026-10-01), on the sync branch. |
 

@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router'
 import { useReadyData } from '../../app/DataProvider.tsx'
 import { LIMITS } from '../../config.ts'
 import type { CategoryId } from '../../domain/categories.ts'
-import { addDays, cycleFor, todayInIsrael } from '../../domain/cycle.ts'
+import { addDays, todayInIsrael } from '../../domain/cycle.ts'
 import { agorotToKeypad, keypadReducer } from '../../domain/keypad.ts'
 import { exceedsMax, parseAmount } from '../../domain/money.ts'
 import type { Expense, ExpensePatch } from '../../domain/types.ts'
@@ -72,7 +72,7 @@ function EditForm({
   /** Tells the parent this sheet is closing itself, so a vanished expense is not reported as deleted elsewhere. */
   setDone: (value: boolean) => void
 }) {
-  const { repo, run, highlight, members, household, mode } = useReadyData()
+  const { repo, run, highlight, members, mode, cycle } = useReadyData()
   const online = useOnline()
   // With the shared backend, edits need the server: not while offline, not before the expense was sent.
   const blocked: 'edit.pending' | 'edit.offline' | null =
@@ -133,9 +133,9 @@ function EditForm({
     }
     repo.track('expense_edit', { fields })
     highlight(expense.id)
-    // A new date in an earlier cycle takes the row out of this list; say so instead of a bare 'saved'.
-    const movedEarlier = patch.spentOn !== undefined && patch.spentOn < cycleFor(todayInIsrael(), household.cycleStartDay).start
-    toast.show({ message: t(movedEarlier ? 'toast.updatedEarlierCycle' : 'toast.updated') })
+    // A new date in another cycle takes the row out of this list; say so instead of a bare 'saved'.
+    const moved = patch.spentOn === undefined ? null : patch.spentOn < cycle.start ? 'earlier' : patch.spentOn >= cycle.endExclusive ? 'later' : null
+    toast.show({ message: t(moved === 'earlier' ? 'toast.updatedEarlierCycle' : moved === 'later' ? 'toast.updatedOtherCycle' : 'toast.updated') })
     onClose()
   }
 

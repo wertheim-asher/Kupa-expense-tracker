@@ -4,7 +4,9 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { repoFor } from '../data/mode.ts'
-import { addDays, cycleFor, todayInIsrael } from '../domain/cycle.ts'
+import { addDays, cycleFor, shiftCycle, todayInIsrael } from '../domain/cycle.ts'
+import { DEMO } from '../data/demoSeed.ts'
+import { cycleLabel } from '../i18n/dates.ts'
 import type { StoreData } from '../data/store.ts'
 import { App } from './App.tsx'
 
@@ -248,4 +250,61 @@ describe('core flow (LocalRepo)', () => {
     expect(stored().expenses[0].category).toBe('fun')
     expect(stored().events.find((e) => e.name === 'expense_edit')?.props).toEqual({ fields: ['category'] })
   })
+})
+
+describe('history (earlier cycles)', () => {
+  it('shows the previous cycle, edits an expense there, and comes back to the current one', async () => {
+    await repoFor('demo').resetDevice()
+    const user = userEvent.setup()
+    render(<App initialMode="demo" />)
+    await screen.findByRole('button', { name: 'הוספת הוצאה' })
+    const current = cycleFor(todayInIsrael(), DEMO.cycleStartDay)
+    const previous = shiftCycle(current, DEMO.cycleStartDay, -1)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(cycleLabel(current))
+    expect(screen.getByRole('button', { name: 'המחזור הבא' })).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'המחזור הקודם' }))
+    await screen.findByRole('button', { name: 'חזרה למחזור הנוכחי' })
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(cycleLabel(previous))
+    expect(screen.getByText('המחזור הזה הסתיים')).toBeInTheDocument()
+    // New expenses go to the current cycle, so there is no "+" here.
+    expect(screen.queryByRole('button', { name: 'הוספת הוצאה' })).not.toBeInTheDocument()
+
+    // The seeded previous cycle has expenses, and they can be edited.
+    const row = screen.getAllByRole('link').find((a) => a.getAttribute('href')?.startsWith('/expense/'))
+    expect(row).toBeDefined()
+    await user.click(row!)
+    const edit = await screen.findByRole('dialog', { name: 'עריכת הוצאה' })
+    await user.click(within(edit).getAllByRole('button', { pressed: false })[0])
+    await user.click(within(edit).getByRole('button', { name: 'שמירה' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(visible(screen.getByRole('status').textContent ?? '')).toBe('השינויים נשמרו')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(cycleLabel(previous))
+
+    await user.click(screen.getByRole('button', { name: 'חזרה למחזור הנוכחי' }))
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(cycleLabel(current)))
+    expect(screen.getByRole('button', { name: 'הוספת הוצאה' })).toBeInTheDocument()
+  })
+})
+
+describe('demo: simulate a partner expense', () => {
+  it('goes home, and 3 seconds later the partner adds ₪84 groceries like a synced expense', async () => {
+    await repoFor('demo').resetDevice()
+    const user = userEvent.setup()
+    render(<App initialMode="demo" />)
+    await screen.findByRole('button', { name: 'הוספת הוצאה' })
+    const shekels = () => Number(bigNumber().replace(/[^\d]/g, ''))
+    const before = shekels()
+
+    await user.click(screen.getByRole('link', { name: 'הגדרות' }))
+    await user.click(await screen.findByRole('button', { name: 'הדמיה: הוצאה של בן או בת הזוג' }))
+    await screen.findByRole('button', { name: 'הוספת הוצאה' })
+    expect(visible(screen.getByRole('status').textContent ?? '')).toBe('עוד 3 שניות תגיע הוצאה מבן או בת הזוג')
+
+    await waitFor(() => expect(shekels()).toBe(before - 84), { timeout: 5000 })
+    const added = (await repoFor('demo').listExpenses({ from: todayInIsrael(), toExclusive: addDays(todayInIsrael(), 1) })).find(
+      (e) => e.amountAgorot === 8400 && e.category === 'groceries' && e.memberId === DEMO.danId,
+    )
+    expect(added).toBeDefined()
+  }, 10_000)
 })

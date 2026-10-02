@@ -276,6 +276,29 @@ export class LocalStoreRepo implements Repo {
     })
   }
 
+  async simulatePartnerExpense(): Promise<void> {
+    this.mutate((d) => {
+      const { session, household } = this.requireSession(d)
+      const partner = d.members.find((m) => m.householdId === household.id && m.id !== session.memberId)
+      if (!partner) throw new RepoError('not_found')
+      const now = this.nowIso()
+      d.expenses.push({
+        id: uuid(),
+        householdId: household.id,
+        memberId: partner.id,
+        amountAgorot: 8400,
+        category: 'groceries',
+        spentOn: this.today(),
+        logDurationMs: null,
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+      })
+    })
+    // The same path as a change from elsewhere: the home screen reloads and highlights the new row.
+    for (const listener of this.listeners) listener()
+  }
+
   subscribe(onChange: () => void): () => void {
     if (this.listeners.size === 0) {
       // Nobody was listening, so another tab may have written meanwhile: read fresh from storage.
