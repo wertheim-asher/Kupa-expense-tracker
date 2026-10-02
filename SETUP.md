@@ -21,7 +21,7 @@ By default Supabase allows 30 anonymous sign-ins per hour from one network. A cl
 1. Left sidebar: **Authentication**, then **Rate Limits**.
 2. Set the limit for **anonymous users** (sign-ins per hour) to **500**, then click **Save**.
 
-## 4. Create the database (two scripts, in order)
+## 4. Create the database (the scripts, in order)
 Run each file once, in this order. For each one:
 1. Open it on GitHub, then click the **Copy raw file** button (two overlapping squares, top right of the file).
 2. In Supabase, left sidebar: **SQL Editor**, then **+ New query**.

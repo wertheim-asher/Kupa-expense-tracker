@@ -1,14 +1,30 @@
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { useReadyData } from '../../app/DataProvider.tsx'
 import { t } from '../../i18n/index.ts'
 import { Button } from '../../ui/Button.tsx'
-import { InviteCode, ShareInviteButton } from './InviteShare.tsx'
+import { InviteCode, SendToSelfButton, ShareInviteButton } from './InviteShare.tsx'
 
 /** Right after creating a budget: invite the partner, or do it later from settings. */
 export function Invite() {
-  const { household } = useReadyData()
+  const { household, repo } = useReadyData()
   const inviteChanged = (useLocation().state as { inviteChanged?: boolean } | null)?.inviteChanged === true
   const navigate = useNavigate()
+  // After coming back, the old link no longer works: offer the new one.
+  const [personalCode, setPersonalCode] = useState<string | null>(null)
+  useEffect(() => {
+    if (!inviteChanged) return
+    let cancelled = false
+    repo
+      .getMyPersonalCode()
+      .then((code) => {
+        if (!cancelled) setPersonalCode(code)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [inviteChanged, repo])
 
   return (
     <main className="flex flex-1 flex-col px-6 pt-12 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
@@ -19,6 +35,7 @@ export function Invite() {
           // Only after taking a seat back (rejoin), which also changes the personal code.
           <div role="status" className="flex flex-col gap-2 rounded-2xl bg-warn-soft px-4 py-3 text-sm font-medium text-warn">
             <p>{t('join.personalChanged')}</p>
+            {personalCode && <SendToSelfButton personalCode={personalCode} className="min-h-10 self-center px-4 text-sm" />}
             <p>{t('invite.changed')}</p>
           </div>
         )}

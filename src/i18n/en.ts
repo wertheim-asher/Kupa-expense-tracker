@@ -53,6 +53,7 @@ export const en: Record<MessageKey, string> = {
   'join.personalInvalid': 'Personal code not found. Please check it. The code changes after each use.',
   'join.personalChanged': "You're back in your place. Your personal code changed, and the new one is in Settings.",
   'join.rejoinSubmit': 'Back to the budget',
+  'join.iosNote': 'Do you open Kupa from its home-screen icon? Copy the code and paste it there. Coming back here moves your place to this browser.',
   'join.submit': 'Join',
   'join.codeInvalid': 'The code has 6 characters.',
   'join.notFound': 'Code not found. Please check it.', // SPEC

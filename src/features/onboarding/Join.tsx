@@ -7,6 +7,8 @@ import { LIMITS } from '../../config.ts'
 import { RepoError } from '../../data/repo.ts'
 import { t, type MessageKey } from '../../i18n/index.ts'
 import { Button } from '../../ui/Button.tsx'
+import { isStandalone } from '../../analytics/track.ts'
+import { CopyButton } from '../../ui/CopyButton.tsx'
 import { useToast } from '../../ui/Toast.tsx'
 import { sendReturnLink } from './InviteShare.tsx'
 
@@ -23,6 +25,15 @@ export function normalizePersonalCode(input: string): string {
 export function normalizeCode(input: string): string {
   const fromLink = /\/join\/([A-Za-z0-9 ]+)/.exec(input)?.[1] ?? input
   return fromLink.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
+}
+
+/**
+ * iPhone or iPad, in a browser rather than the home-screen app. iOS opens every link in a browser,
+ * and the home-screen app keeps its own storage, so coming back here moves the seat to the browser.
+ */
+function iosBrowser(): boolean {
+  if (typeof navigator === 'undefined' || isStandalone()) return false
+  return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
 const ERRORS: Partial<Record<string, MessageKey>> = {
@@ -170,6 +181,12 @@ function Join({ onJoined }: { onJoined: () => void }) {
             <p id="join-personal-help" className={submitted && !personalOk ? 'text-sm font-medium text-over' : 'text-sm text-muted'}>
               {submitted && !personalOk ? t('join.personalLength') : t('join.personalHelp')}
             </p>
+            {fromReturnLink && personalOk && iosBrowser() && (
+              <div className="mt-2 flex items-center gap-2 rounded-2xl bg-warn-soft py-2 ps-4 pe-1 text-sm font-medium text-warn">
+                <p className="flex-1">{t('join.iosNote')}</p>
+                <CopyButton text={personal} label={t('settings.copyPersonal')} className="active:bg-warn/10" />
+              </div>
+            )}
           </div>
         ) : (
           <>
