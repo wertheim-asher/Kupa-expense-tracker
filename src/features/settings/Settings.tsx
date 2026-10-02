@@ -16,6 +16,7 @@ import { MemberChip } from '../../ui/MemberChip.tsx'
 import { Money } from '../../ui/Money.tsx'
 import { useToast } from '../../ui/Toast.tsx'
 import { syncEnabled } from '../../data/supabase.ts'
+import { RepoError } from '../../data/repo.ts'
 import { InviteCode, ShareInviteButton } from '../onboarding/InviteShare.tsx'
 
 const DAYS = Array.from({ length: LIMITS.maxCycleDay - LIMITS.minCycleDay + 1 }, (_, i) => i + LIMITS.minCycleDay)
@@ -225,9 +226,19 @@ export function Settings() {
             inviteCode={syncEnabled ? household.inviteCode : null}
             personalCode={personalCode}
             onConfirm={async () => {
-              await repo.resetDevice()
+              try {
+                await repo.resetDevice()
+              } catch (e) {
+                // Unsent offline expenses would be lost: the repo refuses until they are sent.
+                toast.show({
+                  message: t(e instanceof RepoError && e.code === 'network' ? 'settings.disconnectPending' : 'toast.actionFailed'),
+                  durationMs: 6000,
+                })
+                return false
+              }
               await data.refresh()
               navigate('/welcome', { replace: true })
+              return true
             }}
           />
         )}
@@ -411,7 +422,8 @@ function DisconnectCard({
   inviteCode,
   personalCode,
 }: {
-  onConfirm: () => Promise<void>
+  /** Resolves false when nothing changed (for example unsent expenses), so the buttons come back. */
+  onConfirm: () => Promise<boolean>
   inviteCode: string | null
   personalCode: string | null
 }) {
@@ -451,7 +463,7 @@ function DisconnectCard({
                 disabled={busy}
                 onClick={async () => {
                   setBusy(true)
-                  await onConfirm()
+                  if (!(await onConfirm())) setBusy(false)
                 }}
               >
                 {inviteCode ? t('settings.disconnectSyncYes') : t('settings.disconnectYes')}

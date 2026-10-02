@@ -19,8 +19,9 @@ import type {
   NewExpense,
   Session,
 } from '../domain/types.ts'
+import { APP } from '../config.ts'
 import { RepoError, type Repo, type RepoErrorCode } from './repo.ts'
-import { clearOffline, eventQueue, offlineCache, outbox, pendingExpense, type OutboxItem } from './offline.ts'
+import { clearOffline, eventQueue, offlineCache, outbox, pendingExpense, tombstones, type OutboxItem } from './offline.ts'
 import { checkAmount, checkCycleDay, checkNewExpense, checkPatch, cleanName } from './validate.ts'
 
 interface HouseholdRow {
@@ -107,8 +108,12 @@ function toRepoError(error: PostgrestError | Error | { message?: string; code?: 
 /** Events tracked before the household exists (app_open on the welcome screen) wait here. */
 const MAX_PENDING_EVENTS = 20
 
-/** Server answers that mean "never going to work" for a queued expense (checks, RLS, bad references). */
-const PERMANENT_ERRORS = new Set(['23502', '23503', '23514', '22P02', '42501'])
+/**
+ * Server answers that mean "never going to work" for a queued expense (bad values, bad references).
+ * Not 42501 (permission): after a long time offline the login may not be refreshed yet, and the
+ * request goes out without it; that must be retried, never dropped.
+ */
+const PERMANENT_ERRORS = new Set(['23502', '23503', '23514', '22P02'])
 
 const isOffline = () => typeof navigator !== 'undefined' && navigator.onLine === false
 
@@ -228,9 +233,15 @@ export class SupabaseRepo implements Repo {
     this.flushing = (async () => {
       const hid = this.session?.householdId
       if (!hid || isOffline()) return
+      // Only send with a valid login (refreshed if needed); otherwise the request would go out
+      // anonymous and be refused. Try again on the next trigger.
+      const { data: auth } = await this.sb.auth.getSession()
+      if (!auth.session) return
       let changed = false
       for (const item of outbox.all()) {
         if (item.householdId !== hid) continue
+        // Undone since this flush started: nothing to send.
+        if (!outbox.has(item.input.id)) continue
         let error: { code?: string; message?: string } | null = null
         try {
           error = (await this.sb.from('expenses').insert(rowFor(item))).error
@@ -239,7 +250,12 @@ export class SupabaseRepo implements Repo {
         }
         // Stored now, or already stored by an earlier attempt whose answer got lost.
         if (!error || error.code === '23505') {
-          outbox.remove(item.input.id)
+          if (outbox.remove(item.input.id)) {
+            offlineCache.putExpense({ ...pendingExpense(item), pending: undefined })
+          } else {
+            // Undone while it was being sent: delete it on the server too.
+            tombstones.add(hid, item.input.id)
+          }
           changed = true
           continue
         }
@@ -250,8 +266,9 @@ export class SupabaseRepo implements Repo {
           this.track('outbox_dropped', { reason: error.code })
           continue
         }
-        break // Still offline or the server is unreachable: try again later, in order.
+        break // Still offline, server unreachable, or the login is not ready: try again later, in order.
       }
+      changed = (await this.flushTombstones(hid)) || changed
       await this.flushQueuedEvents(hid)
       if (changed) this.notify()
     })().finally(() => {
@@ -260,19 +277,39 @@ export class SupabaseRepo implements Repo {
     return this.flushing
   }
 
+  /** Soft-deletes on the server what was undone while its insert may already have landed. True if any ran. */
+  private async flushTombstones(hid: string): Promise<boolean> {
+    let ran = false
+    for (const t of tombstones.all()) {
+      if (t.householdId !== hid) continue
+      try {
+        const { error } = await this.sb
+          .from('expenses')
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('id', t.id)
+          .is('deleted_at', null)
+        if (error && toRepoError(error).code === 'network') break
+      } catch {
+        break
+      }
+      // Done, already deleted, or never stored: either way nothing is left to do.
+      tombstones.remove(t.id)
+      ran = true
+    }
+    return ran
+  }
+
   private async flushQueuedEvents(hid: string): Promise<void> {
-    const queued = eventQueue.all().filter((e) => e.householdId === hid)
+    // Take them out first, so another tab flushing at the same time cannot send them too.
+    const queued = eventQueue.take(hid)
     if (queued.length === 0) return
     try {
       const { error } = await this.sb.from('events').insert(
         queued.map((e) => ({ household_id: e.householdId, member_id: e.memberId, name: e.name, props: { ...e.props, queued_at: e.at } })),
       )
-      if (!error) {
-        const sent = new Set(queued.map((e) => `${e.at}|${e.name}`))
-        eventQueue.save(eventQueue.all().filter((e) => !(e.householdId === hid && sent.has(`${e.at}|${e.name}`))))
-      }
+      if (error) eventQueue.putBack(queued)
     } catch {
-      // Try again on the next flush.
+      eventQueue.putBack(queued)
     }
   }
 
@@ -407,12 +444,14 @@ export class SupabaseRepo implements Repo {
 
   async listExpenses(range: { from: string; toExclusive: string }): Promise<Expense[]> {
     const { householdId } = this.require()
-    const cachedList = () => offlineCache.get().expenses?.[rangeKey(range)]?.filter((e) => e.householdId === householdId) ?? null
+    // The exact range if it was loaded before; otherwise what the cache has for those dates (for
+    // example the first day of a new cycle opened offline), so offline saves always show.
+    const cachedList = () =>
+      offlineCache.get().expenses?.[rangeKey(range)]?.filter((e) => e.householdId === householdId) ??
+      offlineCache.expensesInRange(householdId, range.from, range.toExclusive)
     let list: Expense[]
     if (isOffline()) {
-      const cached = cachedList()
-      if (!cached) throw new RepoError('network')
-      list = cached
+      list = cachedList()
     } else {
       const { data, error } = await this.sb
         .from('expenses')
@@ -425,9 +464,8 @@ export class SupabaseRepo implements Repo {
         .order('created_at', { ascending: false })
       if (error) {
         const repoError = toRepoError(error)
-        const cached = cachedList()
-        if (repoError.code !== 'network' || !cached) throw repoError
-        list = cached
+        if (repoError.code !== 'network') throw repoError
+        list = cachedList()
       } else {
         list = (data as ExpenseRow[]).map(toExpense)
         offlineCache.setExpenses(rangeKey(range), list)
@@ -458,7 +496,8 @@ export class SupabaseRepo implements Repo {
     }
     // No connection: keep it on the phone and send it later (the client id makes the retry safe).
     const queue = () => {
-      outbox.add(item)
+      // Storage full or blocked: say so ("Couldn't save. Try again?") instead of a false "saved".
+      if (!outbox.add(item)) throw new RepoError('storage_failed')
       return pendingExpense(item)
     }
     if (isOffline()) return queue()
@@ -479,7 +518,9 @@ export class SupabaseRepo implements Repo {
       if (repoError.code === 'network') return queue()
       throw repoError
     }
-    return toExpense(data as ExpenseRow)
+    const saved = toExpense(data as ExpenseRow)
+    offlineCache.putExpense(saved)
+    return saved
   }
 
   async updateExpense(id: string, patch: ExpensePatch): Promise<Expense> {
@@ -495,13 +536,22 @@ export class SupabaseRepo implements Repo {
     if (error) throw toRepoError(error)
     const row = (data as ExpenseRow[])[0]
     if (!row) throw new RepoError('not_found')
-    return toExpense(row)
+    const updated = toExpense(row)
+    offlineCache.putExpense(updated)
+    return updated
   }
 
   async deleteExpense(id: string): Promise<void> {
     this.require()
-    // Still waiting to be sent (for example an undo right after an offline save): just drop it.
-    if (outbox.remove(id)) return
+    // Still waiting to be sent (for example an undo right after an offline save). Its insert may
+    // already have reached the server without an answer, or be in flight right now, so the
+    // server copy is deleted too: right away when online, otherwise on the next flush.
+    if (outbox.remove(id)) {
+      const hid = this.require().householdId
+      tombstones.add(hid, id)
+      if (!isOffline()) await this.flushTombstones(hid)
+      return
+    }
     const { data, error } = await this.sb
       .from('expenses')
       .update({ deleted_at: new Date().toISOString() })
@@ -514,6 +564,7 @@ export class SupabaseRepo implements Repo {
       const { data: exists } = await this.sb.from('expenses').select('id').eq('id', id)
       if (!exists || exists.length === 0) throw new RepoError('not_found')
     }
+    offlineCache.dropExpense(id)
   }
 
   async restoreExpense(id: string): Promise<void> {
@@ -620,10 +671,26 @@ export class SupabaseRepo implements Repo {
   }
 
   async resetDevice(): Promise<void> {
+    // Expenses saved offline and not sent yet would be lost: send them first, or refuse.
+    const hid = this.session?.householdId
+    const unsent = () => outbox.all().some((i) => i.householdId === hid)
+    if (hid && unsent()) {
+      await this.flushOutbox()
+      if (unsent()) throw new RepoError('network')
+    }
+    // Ends this device's anonymous user; the invite code (and personal code) are the way back.
+    const { error } = await this.sb.auth.signOut({ scope: 'local' })
+    if (error) {
+      // Offline with an expired login the library may keep the stored session; remove it ourselves,
+      // or the device would quietly reconnect to the budget the next time it is online.
+      try {
+        localStorage.removeItem(`${APP.slug}.auth`)
+      } catch {
+        // Nothing stored.
+      }
+    }
     this.setSession(null)
     this.pendingEvents = []
     clearOffline()
-    // Ends this device's anonymous user; the invite code is the way back.
-    await this.sb.auth.signOut({ scope: 'local' })
   }
 }

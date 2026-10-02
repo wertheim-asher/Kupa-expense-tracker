@@ -143,6 +143,7 @@ export const he = {
   'settings.personalCode': 'הקוד האישי שלך: {code}',
   'settings.personalHelp': 'שומרים אותו יחד עם קוד ההזמנה. שניהם יחד מחזירים אותך למקום שלך ממכשיר אחר.',
   'settings.disconnectSyncYes': 'כן, לנתק',
+  'settings.disconnectPending': 'יש הוצאות שעוד לא נשלחו. מתחברים לאינטרנט ומנסים שוב, כדי שהן לא יאבדו.',
 
   'demo.banner': 'מצב הדגמה', // SPEC
   'offline.banner': 'אין חיבור. הוצאות חדשות יישלחו כשהחיבור יחזור.', // SPEC

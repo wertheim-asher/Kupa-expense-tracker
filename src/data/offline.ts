@@ -31,6 +31,7 @@ export interface OfflineCache {
 const OUTBOX_KEY = `${APP.slug}.outbox.v1`
 const EVENTS_KEY = `${APP.slug}.events-outbox.v1`
 const CACHE_KEY = `${APP.slug}.cache.v1`
+const TOMBSTONES_KEY = `${APP.slug}.tombstones.v1`
 const MAX_QUEUED_EVENTS = 300
 
 function read<T>(key: string, fallback: T): T {
@@ -42,20 +43,23 @@ function read<T>(key: string, fallback: T): T {
   }
 }
 
-function write(key: string, value: unknown): void {
+/** False when storage is full or blocked (the caller decides whether that matters). */
+function write(key: string, value: unknown): boolean {
   try {
     localStorage.setItem(key, JSON.stringify(value))
+    return true
   } catch {
-    // Storage full or blocked: offline support degrades, the app keeps working online.
+    return false
   }
 }
 
 export const outbox = {
   all: (): OutboxItem[] => read<OutboxItem[]>(OUTBOX_KEY, []),
   save: (items: OutboxItem[]) => write(OUTBOX_KEY, items),
-  add(item: OutboxItem): void {
+  /** False if it could not be stored: the expense would be lost, so the caller must not report "saved". */
+  add(item: OutboxItem): boolean {
     const items = outbox.all().filter((i) => i.input.id !== item.input.id)
-    outbox.save([...items, item])
+    return outbox.save([...items, item]) && outbox.has(item.input.id)
   },
   remove(id: string): boolean {
     const items = outbox.all()
@@ -71,6 +75,26 @@ export const eventQueue = {
   all: (): QueuedEvent[] => read<QueuedEvent[]>(EVENTS_KEY, []),
   save: (items: QueuedEvent[]) => write(EVENTS_KEY, items.slice(-MAX_QUEUED_EVENTS)),
   add: (event: QueuedEvent) => eventQueue.save([...eventQueue.all(), event]),
+  /** Takes this household's events out of the queue before sending, so a second tab cannot send them too. */
+  take(householdId: string): QueuedEvent[] {
+    const all = eventQueue.all()
+    const mine = all.filter((e) => e.householdId === householdId)
+    if (mine.length > 0) eventQueue.save(all.filter((e) => e.householdId !== householdId))
+    return mine
+  },
+  /** Puts events back after a failed send. */
+  putBack: (events: QueuedEvent[]) => eventQueue.save([...events, ...eventQueue.all()]),
+}
+
+/** Expenses undone or deleted while their insert may already be on the server: deleted there on the next flush. */
+export const tombstones = {
+  all: (): Array<{ householdId: string; id: string }> => read(TOMBSTONES_KEY, []),
+  add(householdId: string, id: string): void {
+    write(TOMBSTONES_KEY, [...tombstones.all().filter((t) => t.id !== id), { householdId, id }])
+  },
+  remove(id: string): void {
+    write(TOMBSTONES_KEY, tombstones.all().filter((t) => t.id !== id))
+  },
 }
 
 export const offlineCache = {
@@ -84,10 +108,43 @@ export const offlineCache = {
     const next = Object.fromEntries([...Object.entries(current).filter(([k]) => k !== rangeKey).slice(-2), [rangeKey, list]])
     offlineCache.update({ expenses: next })
   },
+  /**
+   * Expenses in the range from any cached list (deduped), for a range that was never loaded
+   * online, such as the first day of a new cycle opened offline.
+   */
+  expensesInRange(householdId: string, from: string, toExclusive: string): Expense[] {
+    const byId = new Map<string, Expense>()
+    for (const list of Object.values(offlineCache.get().expenses ?? {})) {
+      for (const e of list) {
+        if (e.householdId === householdId && e.spentOn >= from && e.spentOn < toExclusive) byId.set(e.id, e)
+      }
+    }
+    return [...byId.values()]
+  },
+  /** Keeps the cache in step with a successful write, so an offline reload right after shows it. */
+  putExpense(expense: Expense): void {
+    const lists = offlineCache.get().expenses
+    if (!lists) return
+    const stored = { ...expense, pending: undefined }
+    const next = Object.fromEntries(
+      Object.entries(lists).map(([key, list]) => {
+        const [from, toExclusive] = key.split('|')
+        const rest = list.filter((e) => e.id !== expense.id)
+        const belongs = expense.deletedAt === null && expense.spentOn >= from && expense.spentOn < toExclusive
+        return [key, belongs ? [stored, ...rest] : rest]
+      }),
+    )
+    offlineCache.update({ expenses: next })
+  },
+  dropExpense(id: string): void {
+    const lists = offlineCache.get().expenses
+    if (!lists) return
+    offlineCache.update({ expenses: Object.fromEntries(Object.entries(lists).map(([k, list]) => [k, list.filter((e) => e.id !== id)])) })
+  },
 }
 
 export function clearOffline(): void {
-  for (const key of [OUTBOX_KEY, EVENTS_KEY, CACHE_KEY]) {
+  for (const key of [OUTBOX_KEY, EVENTS_KEY, CACHE_KEY, TOMBSTONES_KEY]) {
     try {
       localStorage.removeItem(key)
     } catch {
