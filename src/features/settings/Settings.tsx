@@ -309,19 +309,16 @@ function CodeRow({
   )
 }
 
-/**
- * A code in the disconnect warning. The code and its copy button never part: on a narrow screen
- * they move to their own line together, under the label.
- */
+/** A code in the disconnect warning: its title on top, then the code with its copy button. Same for both codes. */
 function WarningCode({ label, code, copyLabel }: { label: string; code: string; copyLabel: string }) {
   return (
-    <p className="mt-1 flex flex-wrap items-center gap-x-1">
-      <span>{label}</span>
-      <span className="inline-flex items-center whitespace-nowrap">
-        <bdi className="font-bold tracking-[0.08em]">{code}</bdi>
+    <div className="mt-2">
+      <p>{label}</p>
+      <p className="flex items-center gap-1">
+        <bdi className="font-bold tracking-[0.08em] whitespace-nowrap">{code}</bdi>
         <CopyButton text={code} label={copyLabel} className="active:bg-over/10" />
-      </span>
-    </p>
+      </p>
+    </div>
   )
 }
 
@@ -508,10 +505,10 @@ function DisconnectCard({
               {inviteCode ? (
                 <>
                   <p>{t('settings.disconnectWarn')}</p>
-                  <WarningCode label={t('settings.disconnectCode', { code: '' })} code={inviteCode} copyLabel={t('settings.copyInvite')} />
+                  <WarningCode label={t('invite.codeLabel')} code={inviteCode} copyLabel={t('settings.copyInvite')} />
                   {personalCode && (
                     <WarningCode
-                      label={t('settings.personalCode', { code: '' })}
+                      label={t('settings.personalLabel')}
                       code={groupCode(personalCode)}
                       copyLabel={t('settings.copyPersonal')}
                     />

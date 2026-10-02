@@ -94,6 +94,7 @@
 | 2026-10-02 | Two of Asher's long (scrolling) Android screenshots show the export card twice in settings. | A stitching glitch of the phone's long screenshot: his normal screenshots of the same screen show it once, and so do mine. No change. | 0 min |
 | 2026-10-02 | My first speed measurement showed almost no gain (865 to 846 ms). The test tool checks "sheet closed" at growing intervals, so both numbers were rounded up to the same step. | Measured inside the page with exact timestamps instead (see Feedback). | 10 min |
 | 2026-10-02 | Asher's screenshot of round 2: in the disconnect warning the personal code's copy button dropped to the next line. Measuring his screenshots again showed his visible screen is about 360x646 (Chrome bars included), not the 412x728 I had estimated, and at that size the edit sheet still hid the date by 16px. | The code and its copy button now stay together (on a narrow screen they move under the label as one unit). On screens under 700px tall the sheet header, keypad padding and amount are a little smaller. Checked at 360x646, 375x667, 393x700, 360x740, 412x728 and 390x844: copy buttons beside their codes, all categories and the date visible in the edit sheet, add sheet fits. | 15 min |
+| 2026-10-02 | Asher's next screenshot: the invite code sat on its title's line and the personal code under its title, so the two looked different. | Both codes now look the same: the title on top, then the code with its copy button. Checked at 6 screen sizes. | 5 min |
 
 ## Feedback from testing
 | Date | Who | Feedback | Action |
