@@ -32,10 +32,9 @@ Asher's two-phone test passed. Done since: code rows with copy buttons in settin
 
 ## Status at 15:45 (2026-10-02)
 - PR #1 (partner sync) is merged; the live site deploys from `main`.
-- PR #2 (branch `claude/epic-galileo-bn5lcb`): history of earlier cycles, demo "simulate partner expense", the Supabase library loaded only when needed. Waiting for Asher's test on its deploy preview.
+- PR #2 (history of earlier cycles, demo "simulate partner expense", the Supabase library loaded only when needed): tested by Asher on its preview and merged.
 
 ## Next steps
 1. Asher: check the live site on his phone (create or open the budget, add an expense, partner sees it).
 2. Run `npm run test:rls` on a machine that can reach Supabase (this cloud session cannot).
-3. Asher: test PR #2's preview (history arrows, edit in a past cycle, demo partner button); merge only with his OK.
-4. Before Sunday: open the Supabase dashboard, reset the demo on the presenting phone, install the app to the home screen, put the QR codes on a slide.
+3. Before Sunday: open the Supabase dashboard, reset the demo on the presenting phone, install the app to the home screen, put the QR codes on a slide.
