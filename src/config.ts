@@ -2,13 +2,15 @@
 // Imported by vite.config.ts too, so keep this file free of browser APIs.
 
 export const APP = {
-  /** Display name (Hebrew UI). Change it here only. */
+  /** Display name (Hebrew UI) and its English form. Change them here only. */
   name: 'קופה',
+  nameEn: 'Kupa',
   /** Latin slug, used in file names and storage keys. */
   slug: 'kupa',
   version: '0.1.0',
   description: 'תמיד יודעים כמה נשאר עד החיוב הבא',
   owner: 'אשר וורטהיים',
+  ownerEn: 'Asher Wertheim',
   copyrightYear: 2026,
 } as const
 
@@ -32,4 +34,3 @@ export const TIMING = {
 } as const
 
 export const TIME_ZONE = 'Asia/Jerusalem'
-export const LOCALE = 'he-IL'

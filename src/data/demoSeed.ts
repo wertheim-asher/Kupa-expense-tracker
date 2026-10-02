@@ -2,6 +2,7 @@
 // the same `today` always gives the same household, expenses and totals.
 
 import { TIME_ZONE } from '../config.ts'
+import { LANG } from '../i18n/lang.ts'
 import type { CategoryId } from '../domain/categories.ts'
 import { addDays, cycleFor, diffDays, shiftCycle, type Cycle } from '../domain/cycle.ts'
 import type { Expense, Household, IsoDate, Member } from '../domain/types.ts'
@@ -221,8 +222,8 @@ export function buildDemoSeed(today: IsoDate, now: Date): StoreData {
     updatedAt: createdAt,
   }
   const members: Member[] = [
-    { id: DEMO.noaId, householdId: DEMO.householdId, displayName: 'נועה', color: 'teal', createdAt },
-    { id: DEMO.danId, householdId: DEMO.householdId, displayName: 'דן', color: 'violet', createdAt },
+    { id: DEMO.noaId, householdId: DEMO.householdId, displayName: LANG === 'en' ? 'Noa' : 'נועה', color: 'teal', createdAt },
+    { id: DEMO.danId, householdId: DEMO.householdId, displayName: LANG === 'en' ? 'Dan' : 'דן', color: 'violet', createdAt },
   ]
 
   return {

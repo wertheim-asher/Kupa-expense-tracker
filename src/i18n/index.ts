@@ -1,31 +1,34 @@
-// Tiny i18n: one dictionary (Hebrew; English is cut in the fast lane) and t().
+// Tiny i18n: two dictionaries (Hebrew, English) and t(). The language is fixed for a page load.
 
 import { createElement, Fragment, type ReactNode } from 'react'
+import { APP } from '../config.ts'
+import { en } from './en.ts'
 import { he, type MessageKey } from './he.ts'
+import { LANG } from './lang.ts'
 import type { CategoryId } from '../domain/categories.ts'
 
 export type { MessageKey }
+export { DIR, LANG, LOCALE, setLang, type Lang } from './lang.ts'
 
-export const LANG = 'he'
-export const DIR = 'rtl'
+const dict: Record<MessageKey, string> = LANG === 'en' ? en : he
 
 const TOKEN = /\{(\w+)\}/g
 
 /** Plain string with {var} placeholders filled in. */
 export function t(key: MessageKey, vars: Record<string, string | number> = {}): string {
-  return he[key].replace(TOKEN, (match, name: string) => (name in vars ? String(vars[name]) : match))
+  return dict[key].replace(TOKEN, (match, name: string) => (name in vars ? String(vars[name]) : match))
 }
 
 /** Same as t(), but placeholders can be React nodes (for <bdi> amounts). */
 export function tx(key: MessageKey, vars: Record<string, ReactNode>): ReactNode {
-  return splitTemplate(he[key]).map((part, i) =>
+  return splitTemplate(dict[key]).map((part, i) =>
     createElement(Fragment, { key: i }, part.type === 'text' ? part.value : (vars[part.name] ?? `{${part.name}}`)),
   )
 }
 
 /** Text before and after one placeholder, for layouts that place the value on its own line. */
 export function around(key: MessageKey, name: string): { before: string; after: string } {
-  const [before = '', after = ''] = he[key].split(`{${name}}`)
+  const [before = '', after = ''] = dict[key].split(`{${name}}`)
   return { before: before.trim(), after: after.trim() }
 }
 
@@ -43,17 +46,34 @@ function splitTemplate(template: string): Part[] {
   return parts
 }
 
-const CATEGORY_NAMES: Record<CategoryId, string> = {
-  groceries: 'סופר',
-  eating_out: 'אוכל בחוץ',
-  transport: 'רכב ותחבורה',
-  home: 'בית',
-  kids: 'ילדים',
-  health: 'בריאות',
-  fun: 'פנאי',
-  other: 'אחר',
+// SPEC section 8.
+const CATEGORY_NAMES: Record<'he' | 'en', Record<CategoryId, string>> = {
+  he: {
+    groceries: 'סופר',
+    eating_out: 'אוכל בחוץ',
+    transport: 'רכב ותחבורה',
+    home: 'בית',
+    kids: 'ילדים',
+    health: 'בריאות',
+    fun: 'פנאי',
+    other: 'אחר',
+  },
+  en: {
+    groceries: 'Groceries',
+    eating_out: 'Eating out',
+    transport: 'Car and transport',
+    home: 'Home',
+    kids: 'Kids',
+    health: 'Health',
+    fun: 'Fun',
+    other: 'Other',
+  },
 }
 
 export function categoryName(id: CategoryId): string {
-  return CATEGORY_NAMES[id]
+  return CATEGORY_NAMES[LANG][id]
 }
+
+/** The app's name and owner in the current language (config.ts keeps both). */
+export const appName = (): string => (LANG === 'en' ? APP.nameEn : APP.name)
+export const ownerName = (): string => (LANG === 'en' ? APP.ownerEn : APP.owner)

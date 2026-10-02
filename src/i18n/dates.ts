@@ -1,4 +1,4 @@
-import { LOCALE } from '../config.ts'
+import { LOCALE } from './lang.ts'
 import { addDays, type Cycle } from '../domain/cycle.ts'
 import type { IsoDate } from '../domain/types.ts'
 import { t } from './index.ts'

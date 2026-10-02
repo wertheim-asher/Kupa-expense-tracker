@@ -10,8 +10,9 @@ import { todayInIsrael } from '../../domain/cycle.ts'
 import { agorotToKeypad } from '../../domain/keypad.ts'
 import { normalizeTypedAmount, parseAmount } from '../../domain/money.ts'
 import type { Member } from '../../domain/types.ts'
-import { t, tx } from '../../i18n/index.ts'
+import { appName, LANG, ownerName, setLang, t, tx, type Lang } from '../../i18n/index.ts'
 import { Button } from '../../ui/Button.tsx'
+import { cls } from '../../ui/cls.ts'
 import { MemberChip } from '../../ui/MemberChip.tsx'
 import { Money } from '../../ui/Money.tsx'
 import { CopyButton } from '../../ui/CopyButton.tsx'
@@ -178,6 +179,31 @@ export function Settings() {
           </div>
         </Card>
 
+        <Card title={t('settings.language')}>
+          <div className="flex gap-2 p-4">
+            {(['he', 'en'] as const satisfies readonly Lang[]).map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                lang={lang}
+                aria-pressed={LANG === lang}
+                onClick={() => {
+                  if (lang === LANG) return
+                  repo.track('settings_change', { field: 'language' })
+                  // The whole app reloads in the new language; a moment first lets the event be sent.
+                  setTimeout(() => setLang(lang), 300)
+                }}
+                className={cls(
+                  'min-h-12 flex-1 touch-manipulation rounded-full border text-base font-medium',
+                  LANG === lang ? 'border-primary bg-primary-soft text-primary' : 'border-border bg-surface active:bg-bg',
+                )}
+              >
+                {lang === 'he' ? 'עברית' : 'English'}
+              </button>
+            ))}
+          </div>
+        </Card>
+
         <Card title={t('settings.export')}>
           <ul className="divide-y divide-border">
             <li>
@@ -265,8 +291,8 @@ export function Settings() {
         )}
 
         <footer className="mt-auto flex flex-col gap-1 pt-4 text-center text-sm text-muted">
-          <p>{t('app.footer', { name: APP.name, version: APP.version })}</p>
-          <p>{t('app.copyright', { year: APP.copyrightYear, owner: APP.owner })}</p>
+          <p>{t('app.footer', { name: appName(), version: APP.version })}</p>
+          <p>{t('app.copyright', { year: APP.copyrightYear, owner: ownerName() })}</p>
         </footer>
       </main>
     </div>

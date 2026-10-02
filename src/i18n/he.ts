@@ -132,6 +132,7 @@ export const he = {
   'settings.cycleDay': 'יום תחילת המחזור',
   'settings.cycleHelp': 'השינוי חל מיד על המחזור הנוכחי.', // SPEC
   'settings.saved': 'נשמר',
+  'settings.language': 'שפה',
   'settings.export': 'ייצוא נתונים',
   'settings.exportExpenses': 'הורדת הוצאות (CSV)',
   'settings.exportEvents': 'הורדת נתוני שימוש (CSV)',
