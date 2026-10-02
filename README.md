@@ -68,5 +68,6 @@ Database changes live in `supabase/migrations/`, run in order in the Supabase SQ
 - At most 2 members per household. There is no way to remove a partner.
 - Anyone who has a member's live phone (or their personal code) can use that seat; keep the code and its link private.
 - Basic security for an MVP: row level security on every table, no rate limiting, no captcha.
+- On open, home first shows what this phone saw last time and refreshes it within about a second; a partner's newer expense then appears.
 - Free Supabase projects pause after a week without activity; open the dashboard the day before a demo.
 - No bank sync, by design. Categories are fixed. Hebrew and English.

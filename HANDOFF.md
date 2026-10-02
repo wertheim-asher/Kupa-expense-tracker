@@ -4,10 +4,10 @@ Goal: shared-budget PWA for couples (Hebrew RTL): log an expense in 3 taps, alwa
 ## Where things are
 - Live: https://kupa-expense-tracker.netlify.app from `main`. Every push to `main` auto-deploys; every PR gets a deploy preview.
 - Merged: partner sync (PR #1); earlier-cycle history, demo "simulate partner expense", faster first open (PR #2).
-- Open: PR #3 (pilot kit in `pilot/`, dark mode with a 3-way setting, English, one code to come back with a "send to myself" link, Playwright smoke test, GitHub Actions tests on every PR, docs-only pushes skip the production build). Waiting for Asher's test of its preview.
+- PR #3 (pilot kit in `pilot/`, dark mode with a 3-way setting, English, one code to come back with a "send to myself" link, speed work, Playwright smoke test, GitHub Actions tests on every PR, docs-only pushes skip the production build): Asher tested the one-code preview and asked for the speed work and a merge from the cloud while his PC was off.
 - Two Claude sessions work on this repo (Asher's PC and a cloud session). Changes reach `main` only through PRs, so merge `main` into a branch before opening or updating a PR.
 - Netlify free plan: 15 of 300 monthly credits per production deploy; at 300 every site pauses until the cycle resets (Oct 13). Half was used by Oct 2. Ship in batches.
-- Supabase https://xblsobdgqmwvnbdhowiq.supabase.co: migrations 0001 + 0002 applied; 0003 (one code) must be run before PR #3 merges. Keys: `.env.local` (git-ignored) and Netlify env vars.
+- Supabase https://xblsobdgqmwvnbdhowiq.supabase.co: migrations 0001, 0002 and 0003 applied (Asher ran 0003 on Oct 2, evening). Keys: `.env.local` (git-ignored) and Netlify env vars.
 
 ## Verified on the live site (Oct 2, after both merges)
 - `npm run test:rls` 36/36; two-browser sync suite 16/16 (a partner sees a new expense in about 1 s); offline suite 21/21 (offline save, undo, reload, personal code offline, disconnect refused while unsent).
@@ -27,7 +27,7 @@ Goal: shared-budget PWA for couples (Hebrew RTL): log an expense in 3 taps, alwa
 - No usage data from real couples yet. The pilot kit (`pilot/README.md`) has the invite, the closing questions and `metrics.sql` for the three assumptions.
 
 ## Next steps
-1. Asher runs `0003_one_code.sql` in the Supabase SQL editor, then tests PR #3's preview (Settings → מראה, English and back, the personal code card and "שליחה לעצמי", coming back with the link, the core flow); merge only with his OK and a green "Tests" check (one production deploy). The new app needs 0003: without it, coming back with the code alone says "not found". After the merge: `git pull`, then `npm run test:rls` (41 checks).
+1. After PR #3 is merged: Asher runs `git pull`, then `npm run test:rls` (41 checks), and opens the live app on his phone (it now opens on the last-seen home and refreshes it).
 2. Pilot (Asher picked it on Oct 2): send the invite to 3 to 6 couples on Oct 3 to 4; check in on Oct 8; on Oct 16 send the closing questions and run `pilot/metrics.sql` in the Supabase SQL editor; numbers and quotes on slides on Oct 17.
 3. Reminders are set in the cloud session: Supabase check on Oct 8 and Oct 15 (10:00), the pre-presentation checklist on Oct 17 (20:00).
 4. The day before Oct 18: open the Supabase dashboard (free projects pause after a week idle), reset the demo on the presenting phone, install the app to the home screen, put the QR codes from `presentation/` on a slide.
