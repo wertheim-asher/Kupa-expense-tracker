@@ -17,7 +17,7 @@ import { Money } from '../../ui/Money.tsx'
 import { CopyButton } from '../../ui/CopyButton.tsx'
 import { useToast } from '../../ui/Toast.tsx'
 import { useOnline } from '../../ui/useOnline.ts'
-import { syncEnabled } from '../../data/supabase.ts'
+import { syncEnabled } from '../../data/syncConfig.ts'
 import { RepoError } from '../../data/repo.ts'
 import { ShareInviteButton } from '../onboarding/InviteShare.tsx'
 

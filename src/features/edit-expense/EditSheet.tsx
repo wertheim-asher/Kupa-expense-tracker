@@ -18,7 +18,7 @@ import { Money } from '../../ui/Money.tsx'
 import { Sheet } from '../../ui/Sheet.tsx'
 import { useToast } from '../../ui/Toast.tsx'
 import { useOnline } from '../../ui/useOnline.ts'
-import { syncEnabled } from '../../data/supabase.ts'
+import { syncEnabled } from '../../data/syncConfig.ts'
 
 export function EditSheet() {
   const { id } = useParams()

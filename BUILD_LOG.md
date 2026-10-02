@@ -65,6 +65,7 @@
 | 2026-10-02 | A copy button shows a check mark for 1.5s (and a word for screen readers), not a toast. | In the disconnect warning the toast covered the next code, so it could not be copied right away. |
 | 2026-10-02 | History: arrows next to the cycle label move between cycles, back as far as expenses can be dated (one year, 12 cycles); a "חזרה למחזור הנוכחי" chip returns. A past cycle shows what was left at its end ("נשארו ... בסוף המחזור", "המחזור הזה הסתיים"), its expenses can be edited, and it has no "+". A cycle from another year shows the year. | SPEC 7.2 (P1). The one-year limit matches the oldest date an expense can have. New expenses always belong to the current cycle, so "+" would mislead there. |
 | 2026-10-02 | Demo "simulate partner expense": a settings button (demo only) goes home and 3 seconds later the partner adds ₪84 groceries through the same change path as a synced expense, with the new-row highlight. | SPEC section 12 (P2). It shows the shared value moment on stage with no network and no second phone. |
+| 2026-10-02 | The Supabase library loads only when this device has, creates or joins a shared budget (`LazySupabaseRepo`). Screens ask `syncConfig.ts` whether sync is on, without loading the library. | A new visitor (QR code) on the welcome screen or in the demo downloads a third less: 166 KB to 109 KB compressed. The service worker still stores the library for offline use. |
 
 ## Problems, failures and AI limitations
 | Date | What happened | How it was solved | Time lost |
@@ -114,7 +115,7 @@
 | 2026-10-02 | Asher (round 3, screenshot) | In the disconnect warning the personal code's copy button dropped to the next line. | Fixed (see Problems). |
 | 2026-10-02 | Asher | Asked for history: viewing and editing past billing cycles. | Un-cut "previous cycle navigation" (SPEC P1) and built it after the partner-sync merge decision, on its own branch (see Decisions). |
 | 2026-10-02 | Asher | Asked whether the app should block zooming, to feel like an app and fit any phone or tablet (my view only, no change). | My view: keep zoom. iPhone Safari ignores a zoom block anyway, and blocking it fails people with low vision (WCAG 1.4.4). Accidental zoom is already prevented (no double-tap zoom on buttons, 16px inputs so iPhone does not zoom while typing). The app feel comes from installing it to the home screen: full screen, no browser bars, more room. On a tablet it is a phone-width column in the middle, which is fine for a phone-first MVP. No change. |
-| 2026-10-02 | Asher | Picked two small wins: the demo partner button and a faster first open. | Partner button done (see Decisions). Faster first open: next. |
+| 2026-10-02 | Asher | Picked two small wins: the demo partner button and a faster first open. | Partner button done (see Decisions). Faster first open: done. A new visitor downloads 109 KB of code instead of 166 KB (compressed). On my fast test connection the welcome screen showed at the same time (743 vs 746 ms, CPU slowed 4x), so the gain is only on slow mobile connections: about 0.05 s on fast 4G to 0.3 s on slow 3G, by size. The earlier gains hold with it (fake backend at 150 ms: reopen 587 to 443 ms, save 663 to 342 ms). |
 
 ## Edge case results
 Verified on 2026-10-01 by four audit agents against the live site (headless Chrome with mobile emulation at 390x844 and 360x740, faked clock where a date mattered, a second tab as the stand-in for a partner) plus the unit and integration tests. Three gaps the audit found were fixed the same day and re-verified on the live site.
@@ -147,7 +148,6 @@ Verified on 2026-10-01 by four audit agents against the live site (headless Chro
 | See and edit expenses that moved to an earlier cycle | Today they are reachable only in the CSV after a date edit. | Previous-cycle navigation (spec P1) was cut for the deadline. |
 | A hint in the edit sheet before saving a date outside the current cycle | The person knows the row will leave the list before it happens. | The toast after saving now says where it went. |
 | Safer writes between tabs (IndexedDB transactions or Web Locks) | Two tabs saving within about 5ms can lose one expense. | No person can hit it; Phase 3 moves shared writes to the server. |
-| Load the server library only when it is needed | With partner sync the app's code is 573 KB (166 KB compressed), 345 KB without it. A visitor who only opens the demo or the welcome screen would download about a third less. | The repo would have to load the library asynchronously; too risky before the cutoff. |
 | Show the last data at once on launch, then refresh | The home screen would appear instantly online too, as it does offline. | Changes how a launch works (an old number for a moment); not before the cutoff. |
 
 ## Cuts made for time
