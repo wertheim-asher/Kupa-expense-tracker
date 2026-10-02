@@ -293,6 +293,22 @@ function CodeRow({
   )
 }
 
+/**
+ * A code in the disconnect warning. The code and its copy button never part: on a narrow screen
+ * they move to their own line together, under the label.
+ */
+function WarningCode({ label, code, copyLabel }: { label: string; code: string; copyLabel: string }) {
+  return (
+    <p className="mt-1 flex flex-wrap items-center gap-x-1">
+      <span>{label}</span>
+      <span className="inline-flex items-center whitespace-nowrap">
+        <bdi className="font-bold tracking-[0.08em]">{code}</bdi>
+        <CopyButton text={code} label={copyLabel} className="active:bg-over/10" />
+      </span>
+    </p>
+  )
+}
+
 function Card({ title, children }: { title: string; children: ReactNode }) {
   const id = useId()
   return (
@@ -476,17 +492,13 @@ function DisconnectCard({
               {inviteCode ? (
                 <>
                   <p>{t('settings.disconnectWarn')}</p>
-                  <p className="mt-1 flex flex-wrap items-center gap-x-1">
-                    {t('settings.disconnectCode', { code: '' })}
-                    <bdi className="font-bold tracking-[0.2em]">{inviteCode}</bdi>
-                    <CopyButton text={inviteCode} label={t('settings.copyInvite')} className="active:bg-over/10" />
-                  </p>
+                  <WarningCode label={t('settings.disconnectCode', { code: '' })} code={inviteCode} copyLabel={t('settings.copyInvite')} />
                   {personalCode && (
-                    <p className="flex flex-wrap items-center gap-x-1">
-                      {t('settings.personalCode', { code: '' })}
-                      <bdi className="font-bold tracking-[0.1em]">{groupCode(personalCode)}</bdi>
-                      <CopyButton text={groupCode(personalCode)} label={t('settings.copyPersonal')} className="active:bg-over/10" />
-                    </p>
+                    <WarningCode
+                      label={t('settings.personalCode', { code: '' })}
+                      code={groupCode(personalCode)}
+                      copyLabel={t('settings.copyPersonal')}
+                    />
                   )}
                   {waitingForCode && <p className="mt-2">{t('settings.personalWaiting')}</p>}
                 </>

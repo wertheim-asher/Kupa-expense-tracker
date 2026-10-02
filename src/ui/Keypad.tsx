@@ -35,7 +35,7 @@ export function Keypad({ onKey, disabled = false }: { onKey: (action: KeypadActi
   }, [disabled])
 
   return (
-    <div dir="ltr" className="grid shrink-0 grid-cols-3 gap-2 px-4 pt-2 pb-3">
+    <div dir="ltr" className="grid shrink-0 grid-cols-3 gap-2 px-4 pt-2 pb-3 [@media(max-height:700px)]:pt-1 [@media(max-height:700px)]:pb-2">
       {KEYS.map((key) => {
         const label = key === 'back' ? t('key.backspace') : key === '.' ? t('key.dot') : key
         return (

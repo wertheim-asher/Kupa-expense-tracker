@@ -159,7 +159,7 @@ function EditForm({
   return (
     <Sheet title={t('edit.title')} titleId="edit-title" onClose={onClose}>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
-        <AmountDisplay raw={raw} shakeKey={shakeKey} className="pt-2 text-4xl leading-tight" />
+        <AmountDisplay raw={raw} shakeKey={shakeKey} className="pt-2 text-4xl leading-tight [@media(max-height:700px)]:text-3xl" />
         <p className="flex items-center justify-center gap-2 text-sm text-muted">
           <span>{t('edit.paidBy')}</span>
           <MemberChip member={payer} paidByLabel={false} />
@@ -175,7 +175,7 @@ function EditForm({
           <CategoryGrid onPick={setCategory} selected={category} disabled={locked} />
         </div>
 
-        <div className="mt-3">
+        <div className="mt-3 [@media(max-height:700px)]:mt-2">
           <label className="flex items-center gap-3">
             <span className="shrink-0 text-muted">{t('edit.date')}</span>
             <input
