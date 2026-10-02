@@ -17,6 +17,8 @@ import { MemberChip } from '../../ui/MemberChip.tsx'
 import { Money } from '../../ui/Money.tsx'
 import { Sheet } from '../../ui/Sheet.tsx'
 import { useToast } from '../../ui/Toast.tsx'
+import { useOnline } from '../../ui/useOnline.ts'
+import { syncEnabled } from '../../data/supabase.ts'
 
 export function EditSheet() {
   const { id } = useParams()
@@ -70,7 +72,11 @@ function EditForm({
   /** Tells the parent this sheet is closing itself, so a vanished expense is not reported as deleted elsewhere. */
   setDone: (value: boolean) => void
 }) {
-  const { repo, run, highlight, members, household } = useReadyData()
+  const { repo, run, highlight, members, household, mode } = useReadyData()
+  const online = useOnline()
+  // With the shared backend, edits need the server: not while offline, not before the expense was sent.
+  const blocked: 'edit.pending' | 'edit.offline' | null =
+    syncEnabled && mode !== 'demo' ? (expense.pending ? 'edit.pending' : online ? null : 'edit.offline') : null
   const toast = useToast()
   // What the form opened with. Diffing against this (not the live expense) means a change
   // made in another tab to a field the user did not touch is never reverted.
@@ -82,6 +88,8 @@ function EditForm({
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const [shakeKey, setShakeKey] = useState(0)
+  // Nothing can be changed while saving, or while a change could not be saved anyway.
+  const locked = busy || blocked !== null
 
   const today = todayInIsrael()
   const amount = parseAmount(raw)
@@ -151,7 +159,7 @@ function EditForm({
   return (
     <Sheet title={t('edit.title')} titleId="edit-title" onClose={onClose}>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
-        <AmountDisplay raw={raw} shakeKey={shakeKey} className="pt-2 text-4xl leading-tight" />
+        <AmountDisplay raw={raw} shakeKey={shakeKey} className="pt-2 text-4xl leading-tight [@media(max-height:700px)]:text-3xl" />
         <p className="flex items-center justify-center gap-2 text-sm text-muted">
           <span>{t('edit.paidBy')}</span>
           <MemberChip member={payer} paidByLabel={false} />
@@ -164,10 +172,10 @@ function EditForm({
         )}
 
         <div className="mt-2">
-          <CategoryGrid onPick={setCategory} selected={category} disabled={busy} />
+          <CategoryGrid onPick={setCategory} selected={category} disabled={locked} />
         </div>
 
-        <div className="mt-3">
+        <div className="mt-3 [@media(max-height:700px)]:mt-2">
           <label className="flex items-center gap-3">
             <span className="shrink-0 text-muted">{t('edit.date')}</span>
             <input
@@ -176,7 +184,7 @@ function EditForm({
               min={addDays(today, -LIMITS.maxPastDays)}
               max={today}
               required
-              disabled={busy}
+              disabled={locked}
               aria-invalid={!dateOk || undefined}
               aria-describedby={dateOk ? undefined : 'edit-date-error'}
               onChange={(e) => setDate(e.target.value)}
@@ -189,17 +197,21 @@ function EditForm({
             {t('edit.dateInvalid')}
           </p>
         )}
+      </div>
 
+      <Keypad onKey={dispatch} disabled={locked || confirming} />
+
+      <div className="shrink-0 px-4 pb-3">
+        {/* Messages sit next to the buttons they explain, so they are seen on small screens. The status
+            region stays mounted and only its content changes, so screen readers announce it when it appears. */}
+        <div role="status">
+          {blocked && <p className="mb-2 rounded-2xl bg-warn-soft px-4 py-2 text-sm font-medium text-warn">{t(blocked)}</p>}
+        </div>
         {failed && (
-          <p role="alert" className="mt-3 rounded-2xl bg-over-soft px-4 py-2 text-sm font-medium text-over">
+          <p role="alert" className="mb-2 rounded-2xl bg-over-soft px-4 py-2 text-sm font-medium text-over">
             {t('error.save')}
           </p>
         )}
-      </div>
-
-      <Keypad onKey={dispatch} disabled={busy || confirming} />
-
-      <div className="shrink-0 px-4 pb-3">
         {confirming ? (
           <div role="alertdialog" aria-labelledby="delete-q" className="flex items-center gap-2">
             <p id="delete-q" className="flex-1 font-medium">
@@ -208,16 +220,16 @@ function EditForm({
             <Button variant="secondary" onClick={() => setConfirming(false)} disabled={busy}>
               {t('common.cancel')}
             </Button>
-            <Button variant="danger" onClick={() => void remove()} disabled={busy} autoFocus>
+            <Button variant="danger" onClick={() => void remove()} disabled={busy || blocked !== null} autoFocus>
               {t('edit.deleteYes')}
             </Button>
           </div>
         ) : (
           <div className="flex gap-2">
-            <Button variant="danger-ghost" onClick={() => setConfirming(true)} disabled={busy}>
+            <Button variant="danger-ghost" onClick={() => setConfirming(true)} disabled={busy || blocked !== null}>
               {t('edit.delete')}
             </Button>
-            <Button className="flex-1" onClick={() => void save()} disabled={busy || amount === null || !dateOk}>
+            <Button className="flex-1" onClick={() => void save()} disabled={busy || blocked !== null || amount === null || !dateOk}>
               {t('edit.save')}
             </Button>
           </div>

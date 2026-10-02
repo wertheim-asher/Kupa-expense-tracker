@@ -1,10 +1,14 @@
-// Which repo the app uses. LocalRepo by default, DemoRepo with ?demo=1 or "Try the demo".
+// Which repo the app uses. The real app (mode "local") uses the shared Supabase backend when
+// this build has its settings, otherwise on-device storage only. Demo mode (?demo=1 or
+// "Try the demo") is always on-device, so a demo never depends on the network.
 // The choice lives in sessionStorage, so a fresh launch always opens the real app.
 
 import { APP } from '../config.ts'
 import { buildDemoSeed } from './demoSeed.ts'
 import { LocalStoreRepo } from './localStoreRepo.ts'
 import type { Repo } from './repo.ts'
+import { supabase, syncEnabled } from './supabase.ts'
+import { SupabaseRepo } from './supabaseRepo.ts'
 
 export type Mode = 'local' | 'demo'
 
@@ -45,6 +49,8 @@ export function repoFor(mode: Mode): Repo {
   repos[mode] ??=
     mode === 'demo'
       ? new LocalStoreRepo({ key: `${APP.slug}.demo.v1`, seed: buildDemoSeed })
-      : new LocalStoreRepo({ key: `${APP.slug}.local.v1` })
+      : syncEnabled
+        ? new SupabaseRepo(supabase())
+        : new LocalStoreRepo({ key: `${APP.slug}.local.v1` })
   return repos[mode]
 }

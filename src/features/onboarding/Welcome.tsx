@@ -3,8 +3,9 @@ import { useMode } from '../../app/ModeContext.tsx'
 import { APP } from '../../config.ts'
 import { t } from '../../i18n/index.ts'
 import { Button } from '../../ui/Button.tsx'
+import { syncEnabled } from '../../data/supabase.ts'
 
-// "Join with a code" is hidden in the fast lane (no shared backend yet).
+// "Join with a code" appears only when this build has the shared backend.
 export function Welcome() {
   const navigate = useNavigate()
   const { setMode } = useMode()
@@ -20,6 +21,11 @@ export function Welcome() {
         <Button className="min-h-14 w-full text-lg" onClick={() => navigate('/create', { state: { fromApp: true } })}>
           {t('welcome.create')}
         </Button>
+        {syncEnabled && (
+          <Button variant="secondary" className="min-h-14 w-full text-lg" onClick={() => navigate('/join', { state: { fromApp: true } })}>
+            {t('welcome.join')}
+          </Button>
+        )}
         <Button
           variant="ghost"
           className="w-full underline underline-offset-4"

@@ -1,5 +1,5 @@
 import { ChevronLeft, Download, LogOut, Pencil, RotateCcw, Unplug } from 'lucide-react'
-import { useId, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { useReadyData } from '../../app/DataProvider.tsx'
 import { useMode } from '../../app/ModeContext.tsx'
@@ -14,7 +14,12 @@ import { t, tx } from '../../i18n/index.ts'
 import { Button } from '../../ui/Button.tsx'
 import { MemberChip } from '../../ui/MemberChip.tsx'
 import { Money } from '../../ui/Money.tsx'
+import { CopyButton } from '../../ui/CopyButton.tsx'
 import { useToast } from '../../ui/Toast.tsx'
+import { useOnline } from '../../ui/useOnline.ts'
+import { syncEnabled } from '../../data/supabase.ts'
+import { RepoError } from '../../data/repo.ts'
+import { ShareInviteButton } from '../onboarding/InviteShare.tsx'
 
 const DAYS = Array.from({ length: LIMITS.maxCycleDay - LIMITS.minCycleDay + 1 }, (_, i) => i + LIMITS.minCycleDay)
 
@@ -30,6 +35,25 @@ export function Settings() {
   const { repo, run, household, members, session } = data
 
   const saved = () => toast.show({ message: t('settings.saved') })
+
+  // This member's private code for taking their seat back from another device (shared backend only).
+  // undefined: not known yet (loading, or offline with nothing cached); null: there is none.
+  const [personalCode, setPersonalCode] = useState<string | null | undefined>(undefined)
+  const online = useOnline()
+  useEffect(() => {
+    if (!syncEnabled || mode === 'demo') return
+    let cancelled = false
+    repo
+      .getMyPersonalCode()
+      .then((code) => {
+        if (!cancelled) setPersonalCode(code)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+    // Tries again when the connection comes back.
+  }, [repo, mode, online])
   const failed = () => toast.show({ message: t('toast.actionFailed') })
 
   const exportCsv = async (type: 'expenses' | 'events') => {
@@ -81,6 +105,30 @@ export function Settings() {
             ))}
           </ul>
         </Card>
+
+        {syncEnabled && mode !== 'demo' && (
+          <Card title={t('settings.invite')}>
+            <div className="divide-y divide-border">
+              <CodeRow
+                label={t('invite.codeLabel')}
+                code={household.inviteCode}
+                copyLabel={t('settings.copyInvite')}
+                // A free seat: the code is for inviting the partner. Both seats taken: for getting back in.
+                help={t(members.length < 2 ? 'settings.inviteHelpOpen' : 'settings.inviteHelp')}
+              >
+                {members.length < 2 && <ShareInviteButton code={household.inviteCode} className="mt-3 w-full" />}
+              </CodeRow>
+              {personalCode && (
+                <CodeRow
+                  label={t('settings.personalLabel')}
+                  code={groupCode(personalCode)}
+                  copyLabel={t('settings.copyPersonal')}
+                  help={t('settings.personalHelp')}
+                />
+              )}
+            </div>
+          </Card>
+        )}
 
         <Card title={t('settings.budgetSection')}>
           <div className="flex flex-col gap-5 p-4">
@@ -180,10 +228,22 @@ export function Settings() {
           </Card>
         ) : (
           <DisconnectCard
+            inviteCode={syncEnabled ? household.inviteCode : null}
+            personalCode={personalCode}
             onConfirm={async () => {
-              await repo.resetDevice()
+              try {
+                await repo.resetDevice()
+              } catch (e) {
+                // Unsent offline expenses would be lost: the repo refuses until they are sent.
+                toast.show({
+                  message: t(e instanceof RepoError && e.code === 'network' ? 'settings.disconnectPending' : 'toast.actionFailed'),
+                  durationMs: 6000,
+                })
+                return false
+              }
               await data.refresh()
               navigate('/welcome', { replace: true })
+              return true
             }}
           />
         )}
@@ -193,6 +253,55 @@ export function Settings() {
           <p>{t('app.copyright', { year: APP.copyrightYear, owner: APP.owner })}</p>
         </footer>
       </main>
+    </div>
+  )
+}
+
+/** "ABCDEFGHJKMN" → "ABCD EFGH JKMN", easier to copy down. */
+function groupCode(code: string): string {
+  return code.replace(/(.{4})(?=.)/g, '$1 ')
+}
+
+/** One code per row: what it is, the code itself (bold, with a copy button), then what it is for. */
+function CodeRow({
+  label,
+  code,
+  copyLabel,
+  help,
+  children,
+}: {
+  label: string
+  code: string
+  copyLabel: string
+  help: string
+  children?: ReactNode
+}) {
+  return (
+    <div className="p-4">
+      <p className="text-sm font-medium text-muted">{label}</p>
+      <div className="mt-1 flex items-center gap-1">
+        <p aria-hidden="true" dir="ltr" className="text-2xl font-bold tracking-[0.12em] tabular-nums">
+          {code}
+        </p>
+        {/* Screen readers get the code letter by letter; it sits apart so copying by hand copies only the code. */}
+        <span className="sr-only">{code.replace(/ /g, '').split('').join(' ')}</span>
+        <CopyButton text={code} label={copyLabel} className="text-primary" />
+      </div>
+      <p className="mt-1 text-sm text-muted">{help}</p>
+      {children}
+    </div>
+  )
+}
+
+/** A code in the disconnect warning: its title on top, then the code with its copy button. Same for both codes. */
+function WarningCode({ label, code, copyLabel }: { label: string; code: string; copyLabel: string }) {
+  return (
+    <div className="mt-2">
+      <p>{label}</p>
+      <p className="flex items-center gap-1">
+        <bdi className="font-bold tracking-[0.08em] whitespace-nowrap">{code}</bdi>
+        <CopyButton text={code} label={copyLabel} className="active:bg-over/10" />
+      </p>
     </div>
   )
 }
@@ -353,17 +462,47 @@ function BudgetForm({ budgetAgorot, onSave }: { budgetAgorot: number; onSave: (a
   )
 }
 
-function DisconnectCard({ onConfirm }: { onConfirm: () => Promise<void> }) {
+/**
+ * On-device only: disconnecting deletes this device's data. With partner sync: the data stays on the
+ * server, and the invite code plus the personal code (both shown in the warning) are the way back.
+ */
+function DisconnectCard({
+  onConfirm,
+  inviteCode,
+  personalCode,
+}: {
+  /** Resolves false when nothing changed (for example unsent expenses), so the buttons come back. */
+  onConfirm: () => Promise<boolean>
+  inviteCode: string | null
+  /** undefined while not known: disconnecting then could lose the way back, so it waits. */
+  personalCode: string | null | undefined
+}) {
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
+  const waitingForCode = inviteCode !== null && personalCode === undefined
   return (
     <Card title={t('settings.danger')}>
       <div className="flex flex-col gap-3 p-4">
         {confirming ? (
           <div role="alertdialog" aria-labelledby="disconnect-warn" className="flex flex-col gap-3">
-            <p id="disconnect-warn" className="rounded-xl bg-over-soft px-4 py-3 text-sm font-medium text-over">
-              {t('settings.disconnectWarnLocal')}
-            </p>
+            <div id="disconnect-warn" className="rounded-xl bg-over-soft px-4 py-3 text-sm font-medium text-over">
+              {inviteCode ? (
+                <>
+                  <p>{t('settings.disconnectWarn')}</p>
+                  <WarningCode label={t('invite.codeLabel')} code={inviteCode} copyLabel={t('settings.copyInvite')} />
+                  {personalCode && (
+                    <WarningCode
+                      label={t('settings.personalLabel')}
+                      code={groupCode(personalCode)}
+                      copyLabel={t('settings.copyPersonal')}
+                    />
+                  )}
+                  {waitingForCode && <p className="mt-2">{t('settings.personalWaiting')}</p>}
+                </>
+              ) : (
+                <p>{t('settings.disconnectWarnLocal')}</p>
+              )}
+            </div>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setConfirming(false)} disabled={busy}>
                 {t('common.cancel')}
@@ -371,13 +510,13 @@ function DisconnectCard({ onConfirm }: { onConfirm: () => Promise<void> }) {
               <Button
                 variant="danger"
                 autoFocus
-                disabled={busy}
+                disabled={busy || waitingForCode}
                 onClick={async () => {
                   setBusy(true)
-                  await onConfirm()
+                  if (!(await onConfirm())) setBusy(false)
                 }}
               >
-                {t('settings.disconnectYes')}
+                {inviteCode ? t('settings.disconnectSyncYes') : t('settings.disconnectYes')}
               </Button>
             </div>
           </div>

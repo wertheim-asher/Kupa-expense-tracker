@@ -38,6 +38,8 @@ export interface Expense {
   createdAt: string
   updatedAt: string
   deletedAt: string | null
+  /** Saved on this phone while offline, not on the server yet (shared backend only). */
+  pending?: boolean
 }
 
 export interface CreateInput {

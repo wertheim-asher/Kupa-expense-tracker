@@ -43,7 +43,7 @@ export function Sheet({
         tabIndex={-1}
         className="fixed inset-x-0 top-[calc(env(safe-area-inset-top)+0.5rem)] bottom-0 z-50 mx-auto flex max-w-[480px] animate-sheet-up flex-col rounded-t-3xl bg-surface pb-[env(safe-area-inset-bottom)] shadow-2xl outline-none"
       >
-        <header className="flex h-14 shrink-0 items-center justify-between gap-2 ps-5 pe-2">
+        <header className="flex h-14 shrink-0 items-center justify-between gap-2 ps-5 pe-2 [@media(max-height:700px)]:h-12">
           <h2 id={titleId} className="text-lg font-medium">
             {title}
           </h2>
