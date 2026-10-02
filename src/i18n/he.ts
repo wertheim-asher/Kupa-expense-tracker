@@ -141,8 +141,6 @@ export const he = {
   'settings.disconnectYes': 'כן, לנתק ולמחוק',
   'settings.invite': 'הזמנה לקופה',
   'settings.disconnectWarn': 'כדאי לשמור את קוד ההזמנה לפני. בלעדיו אי אפשר לחזור.', // SPEC
-  'settings.disconnectCode': 'קוד ההזמנה: {code}',
-  'settings.personalCode': 'הקוד האישי שלך: {code}',
   'settings.personalLabel': 'הקוד האישי שלך',
   'settings.inviteHelp': 'שומרים אותו כדי לחזור לקופה ממכשיר אחר.',
   'settings.inviteHelpOpen': 'בן או בת הזוג מצטרפים לקופה עם הקוד הזה. שומרים אותו גם כדי לחזור ממכשיר אחר.',
