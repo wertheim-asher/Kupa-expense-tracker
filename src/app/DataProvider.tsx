@@ -10,7 +10,7 @@ import { useMode } from './ModeContext.tsx'
 
 type Status = 'loading' | 'no-session' | 'ready' | 'error'
 
-interface Snapshot {
+export interface Snapshot {
   status: Status
   today: IsoDate
   session: Session | null
@@ -84,6 +84,46 @@ export function useReadyData(): ReadyData {
 
 let appOpenTracked = false
 
+/** Same keys and the same values (every object in a snapshot is flat). */
+function sameFlat<T extends object>(a: T | null, b: T | null): boolean {
+  if (a === b) return true
+  if (!a || !b) return false
+  const keys = Object.keys(a) as Array<keyof T>
+  return keys.length === Object.keys(b).length && keys.every((k) => Object.is(a[k], b[k]))
+}
+
+/** `next`, with each item equal to one in `prev` replaced by that item; `prev` itself when nothing changed. */
+function sameList<T extends { id: string }>(prev: T[], next: T[]): T[] {
+  const byId = new Map(prev.map((x) => [x.id, x]))
+  let unchanged = prev.length === next.length
+  const out = next.map((x, i) => {
+    const old = byId.get(x.id)
+    const kept = old && sameFlat(old, x) ? old : x
+    if (kept !== prev[i]) unchanged = false
+    return kept
+  })
+  return unchanged ? prev : out
+}
+
+/**
+ * `next`, reusing whatever in `prev` is equal: a reload that brings what is already on screen (after a
+ * save, on every return to the app) changes nothing, so nothing re-renders; a changed row is the only new object.
+ */
+export function sameAs(prev: Snapshot, next: Snapshot): Snapshot {
+  const merged: Snapshot = {
+    status: next.status,
+    today: next.today,
+    viewOffset: next.viewOffset,
+    session: sameFlat(prev.session, next.session) ? prev.session : next.session,
+    household: sameFlat(prev.household, next.household) ? prev.household : next.household,
+    cycle: sameFlat(prev.cycle, next.cycle) ? prev.cycle : next.cycle,
+    currentCycle: sameFlat(prev.currentCycle, next.currentCycle) ? prev.currentCycle : next.currentCycle,
+    members: sameList(prev.members, next.members),
+    expenses: sameList(prev.expenses, next.expenses),
+  }
+  return (Object.keys(merged) as Array<keyof Snapshot>).every((k) => merged[k] === prev[k]) ? prev : merged
+}
+
 const EMPTY: Omit<Snapshot, 'status' | 'today'> = {
   session: null,
   household: null,
@@ -146,7 +186,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         next = { status: 'ready', today, session, household, members, cycle, currentCycle, viewOffset: offset, expenses }
       }
       if (seq !== loadSeq.current) return null
-      setSnapshot(next)
+      setSnapshot((prev) => sameAs(prev, next))
       return next
     } catch {
       if (seq !== loadSeq.current) return null
