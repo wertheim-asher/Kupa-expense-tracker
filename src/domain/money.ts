@@ -1,6 +1,7 @@
 // Money (SPEC section 6). Integer agorot only, never floats for stored values.
 
-import { LIMITS, LOCALE } from '../config.ts'
+import { LIMITS } from '../config.ts'
+import { LOCALE } from '../i18n/lang.ts'
 
 const AMOUNT_RE = /^(\d+)(?:\.(\d{0,2}))?$/
 

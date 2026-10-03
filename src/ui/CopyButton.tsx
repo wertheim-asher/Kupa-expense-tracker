@@ -54,7 +54,7 @@ export function CopyButton({ text, label, className }: { text: string; label: st
       aria-label={label}
       onClick={() => void copy()}
       className={cls(
-        'grid size-10 shrink-0 touch-manipulation place-items-center rounded-full transition-colors duration-150 active:bg-black/5',
+        'grid size-10 shrink-0 touch-manipulation place-items-center rounded-full transition-colors duration-150 active:bg-text/10',
         className,
       )}
     >

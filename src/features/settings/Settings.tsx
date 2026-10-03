@@ -10,16 +10,18 @@ import { todayInIsrael } from '../../domain/cycle.ts'
 import { agorotToKeypad } from '../../domain/keypad.ts'
 import { normalizeTypedAmount, parseAmount } from '../../domain/money.ts'
 import type { Member } from '../../domain/types.ts'
-import { t, tx } from '../../i18n/index.ts'
+import { appName, LANG, ownerName, setLang, t, tx, type Lang } from '../../i18n/index.ts'
 import { Button } from '../../ui/Button.tsx'
+import { cls } from '../../ui/cls.ts'
 import { MemberChip } from '../../ui/MemberChip.tsx'
 import { Money } from '../../ui/Money.tsx'
 import { CopyButton } from '../../ui/CopyButton.tsx'
 import { useToast } from '../../ui/Toast.tsx'
+import { setThemeChoice, themeChoice, type ThemeChoice } from '../../ui/theme.ts'
 import { useOnline } from '../../ui/useOnline.ts'
 import { syncEnabled } from '../../data/syncConfig.ts'
 import { RepoError } from '../../data/repo.ts'
-import { ShareInviteButton } from '../onboarding/InviteShare.tsx'
+import { SendToSelfButton, ShareInviteButton } from '../onboarding/InviteShare.tsx'
 
 const DAYS = Array.from({ length: LIMITS.maxCycleDay - LIMITS.minCycleDay + 1 }, (_, i) => i + LIMITS.minCycleDay)
 
@@ -35,10 +37,14 @@ export function Settings() {
   const { repo, run, household, members, session } = data
 
   const saved = () => toast.show({ message: t('settings.saved') })
+  const [theme, setTheme] = useState<ThemeChoice>(themeChoice)
 
   // This member's private code for taking their seat back from another device (shared backend only).
   // undefined: not known yet (loading, or offline with nothing cached); null: there is none.
-  const [personalCode, setPersonalCode] = useState<string | null | undefined>(undefined)
+  // Shown at once from this device's copy, so the page does not jump when the server answers.
+  const [personalCode, setPersonalCode] = useState<string | null | undefined>(() =>
+    syncEnabled && mode !== 'demo' ? repo.peekPersonalCode?.() : undefined,
+  )
   const online = useOnline()
   useEffect(() => {
     if (!syncEnabled || mode === 'demo') return
@@ -106,27 +112,31 @@ export function Settings() {
           </ul>
         </Card>
 
-        {syncEnabled && mode !== 'demo' && (
+        {/* The invite code is only for the partner's first join: once both seats are taken it is not needed. */}
+        {syncEnabled && mode !== 'demo' && members.length < 2 && (
           <Card title={t('settings.invite')}>
-            <div className="divide-y divide-border">
-              <CodeRow
-                label={t('invite.codeLabel')}
-                code={household.inviteCode}
-                copyLabel={t('settings.copyInvite')}
-                // A free seat: the code is for inviting the partner. Both seats taken: for getting back in.
-                help={t(members.length < 2 ? 'settings.inviteHelpOpen' : 'settings.inviteHelp')}
-              >
-                {members.length < 2 && <ShareInviteButton code={household.inviteCode} className="mt-3 w-full" />}
-              </CodeRow>
-              {personalCode && (
-                <CodeRow
-                  label={t('settings.personalLabel')}
-                  code={groupCode(personalCode)}
-                  copyLabel={t('settings.copyPersonal')}
-                  help={t('settings.personalHelp')}
-                />
-              )}
-            </div>
+            <CodeRow
+              label={t('invite.codeLabel')}
+              code={household.inviteCode}
+              copyLabel={t('settings.copyInvite')}
+              help={t('settings.inviteHelp')}
+            >
+              <ShareInviteButton code={household.inviteCode} className="mt-3 w-full" />
+            </CodeRow>
+          </Card>
+        )}
+
+        {/* The one code to keep: it alone brings this member back to their seat from another device. */}
+        {syncEnabled && mode !== 'demo' && personalCode && (
+          <Card title={t('settings.personalTitle')}>
+            <CodeRow
+              label={t('settings.personalLabel')}
+              code={groupCode(personalCode)}
+              copyLabel={t('settings.copyPersonal')}
+              help={t('settings.personalHelp')}
+            >
+              <SendToSelfButton personalCode={personalCode} className="mt-3 w-full" />
+            </CodeRow>
           </Card>
         )}
 
@@ -175,6 +185,55 @@ export function Settings() {
                 {t('settings.cycleHelp')}
               </p>
             </div>
+          </div>
+        </Card>
+
+        <Card title={t('settings.theme')}>
+          <div className="flex gap-2 p-4">
+            {(['light', 'dark', 'system'] as const satisfies readonly ThemeChoice[]).map((choice) => (
+              <button
+                key={choice}
+                type="button"
+                aria-pressed={theme === choice}
+                onClick={() => {
+                  if (choice === theme) return
+                  setThemeChoice(choice)
+                  setTheme(choice)
+                  repo.track('settings_change', { field: 'theme' })
+                }}
+                className={cls(
+                  'min-h-12 flex-1 touch-manipulation rounded-full border px-2 text-sm font-medium leading-tight',
+                  theme === choice ? 'border-primary bg-primary-soft text-primary' : 'border-border bg-surface active:bg-bg',
+                )}
+              >
+                {t(choice === 'light' ? 'settings.themeLight' : choice === 'dark' ? 'settings.themeDark' : 'settings.themeSystem')}
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        <Card title={t('settings.language')}>
+          <div className="flex gap-2 p-4">
+            {(['he', 'en'] as const satisfies readonly Lang[]).map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                lang={lang}
+                aria-pressed={LANG === lang}
+                onClick={() => {
+                  if (lang === LANG) return
+                  repo.track('settings_change', { field: 'language' })
+                  // The whole app reloads in the new language; a moment first lets the event be sent.
+                  setTimeout(() => setLang(lang), 300)
+                }}
+                className={cls(
+                  'min-h-12 flex-1 touch-manipulation rounded-full border text-base font-medium',
+                  LANG === lang ? 'border-primary bg-primary-soft text-primary' : 'border-border bg-surface active:bg-bg',
+                )}
+              >
+                {lang === 'he' ? 'עברית' : 'English'}
+              </button>
+            ))}
           </div>
         </Card>
 
@@ -244,7 +303,7 @@ export function Settings() {
           </Card>
         ) : (
           <DisconnectCard
-            inviteCode={syncEnabled ? household.inviteCode : null}
+            sync={syncEnabled}
             personalCode={personalCode}
             onConfirm={async () => {
               try {
@@ -265,8 +324,8 @@ export function Settings() {
         )}
 
         <footer className="mt-auto flex flex-col gap-1 pt-4 text-center text-sm text-muted">
-          <p>{t('app.footer', { name: APP.name, version: APP.version })}</p>
-          <p>{t('app.copyright', { year: APP.copyrightYear, owner: APP.owner })}</p>
+          <p>{t('app.footer', { name: appName(), version: APP.version })}</p>
+          <p>{t('app.copyright', { year: APP.copyrightYear, owner: ownerName() })}</p>
         </footer>
       </main>
     </div>
@@ -296,7 +355,8 @@ function CodeRow({
     <div className="p-4">
       <p className="text-sm font-medium text-muted">{label}</p>
       <div className="mt-1 flex items-center gap-1">
-        <p aria-hidden="true" dir="ltr" className="text-2xl font-bold tracking-[0.12em] tabular-nums">
+        {/* Smaller on narrow phones, so a 12-character code stays on one line beside its copy button. */}
+        <p aria-hidden="true" dir="ltr" className="text-[length:clamp(1rem,8vw_-_8.7px,1.5rem)] leading-tight font-bold tracking-[0.04em] tabular-nums">
           {code}
         </p>
         {/* Screen readers get the code letter by letter; it sits apart so copying by hand copies only the code. */}
@@ -309,7 +369,7 @@ function CodeRow({
   )
 }
 
-/** A code in the disconnect warning: its title on top, then the code with its copy button. Same for both codes. */
+/** The code in the disconnect warning: its title on top, then the code with its copy button. */
 function WarningCode({ label, code, copyLabel }: { label: string; code: string; copyLabel: string }) {
   return (
     <div className="mt-2">
@@ -480,38 +540,41 @@ function BudgetForm({ budgetAgorot, onSave }: { budgetAgorot: number; onSave: (a
 
 /**
  * On-device only: disconnecting deletes this device's data. With partner sync: the data stays on the
- * server, and the invite code plus the personal code (both shown in the warning) are the way back.
+ * server, and the personal code (shown in the warning, with "Send to myself") is the way back.
  */
 function DisconnectCard({
   onConfirm,
-  inviteCode,
+  sync,
   personalCode,
 }: {
   /** Resolves false when nothing changed (for example unsent expenses), so the buttons come back. */
   onConfirm: () => Promise<boolean>
-  inviteCode: string | null
+  /** The shared backend: the data stays on the server. */
+  sync: boolean
   /** undefined while not known: disconnecting then could lose the way back, so it waits. */
   personalCode: string | null | undefined
 }) {
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
-  const waitingForCode = inviteCode !== null && personalCode === undefined
+  const waitingForCode = sync && personalCode === undefined
   return (
     <Card title={t('settings.danger')}>
       <div className="flex flex-col gap-3 p-4">
         {confirming ? (
           <div role="alertdialog" aria-labelledby="disconnect-warn" className="flex flex-col gap-3">
             <div id="disconnect-warn" className="rounded-xl bg-over-soft px-4 py-3 text-sm font-medium text-over">
-              {inviteCode ? (
+              {sync ? (
                 <>
                   <p>{t('settings.disconnectWarn')}</p>
-                  <WarningCode label={t('invite.codeLabel')} code={inviteCode} copyLabel={t('settings.copyInvite')} />
                   {personalCode && (
-                    <WarningCode
-                      label={t('settings.personalLabel')}
-                      code={groupCode(personalCode)}
-                      copyLabel={t('settings.copyPersonal')}
-                    />
+                    <>
+                      <WarningCode
+                        label={t('settings.personalLabel')}
+                        code={groupCode(personalCode)}
+                        copyLabel={t('settings.copyPersonal')}
+                      />
+                      <SendToSelfButton personalCode={personalCode} className="mt-1" />
+                    </>
                   )}
                   {waitingForCode && <p className="mt-2">{t('settings.personalWaiting')}</p>}
                 </>
@@ -532,7 +595,7 @@ function DisconnectCard({
                   if (!(await onConfirm())) setBusy(false)
                 }}
               >
-                {inviteCode ? t('settings.disconnectSyncYes') : t('settings.disconnectYes')}
+                {sync ? t('settings.disconnectSyncYes') : t('settings.disconnectYes')}
               </Button>
             </div>
           </div>

@@ -21,7 +21,7 @@ export function MemberChip({
   return (
     <span
       className={cls(
-        'relative grid shrink-0 place-items-center rounded-full font-medium text-white',
+        'relative grid shrink-0 place-items-center rounded-full font-medium text-on-member',
         size === 'sm' ? 'size-6 text-[13px]' : 'size-9 text-base',
         member?.color === 'violet' ? 'bg-member-violet' : 'bg-member-teal',
       )}

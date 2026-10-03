@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 
-/* Design tokens (SPEC section 10). Dark mode is cut for the fast lane. */
+/* Design tokens (SPEC section 10). Dark: chosen in settings, or the device's setting (see ui/theme.ts). */
 :root {
   --bg: #f7f7f5;
   --surface: #ffffff;
@@ -15,8 +15,34 @@
   --over-soft: #fee2e2;
   --member-teal: #0f766e;
   --member-violet: #6d28d9;
+  /* Text on filled colors (not in the SPEC table): white in light mode, dark in dark mode, for AA contrast. */
+  --on-primary: #ffffff;
+  --on-over: #ffffff;
+  --on-member: #ffffff;
 
   color-scheme: light;
+}
+
+/* data-theme is set before the first paint (index.html) and by the setting (ui/theme.ts). */
+:root[data-theme='dark'] {
+  --bg: #111113;
+  --surface: #1c1c1f;
+  --text: #f2f2f2;
+  --muted: #a1a1aa;
+  --border: #2a2a2e;
+  --primary: #2dd4bf;
+  --primary-soft: #134e4a;
+  --warn: #fbbf24;
+  --warn-soft: #451a03;
+  --over: #f87171;
+  --over-soft: #450a0a;
+  --member-teal: #2dd4bf;
+  --member-violet: #a78bfa;
+  --on-primary: #042f2e;
+  --on-over: #450a0a;
+  --on-member: #111113;
+
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -33,6 +59,9 @@
   --color-over-soft: var(--over-soft);
   --color-member-teal: var(--member-teal);
   --color-member-violet: var(--member-violet);
+  --color-on-primary: var(--on-primary);
+  --color-on-over: var(--on-over);
+  --color-on-member: var(--on-member);
 
   --font-sans: 'Rubik', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
 
@@ -146,4 +175,34 @@
     animation: none !important;
     background-color: var(--primary-soft);
   }
+}
+
+/*
+ * ₪ from the Hebrew face. Fontsource's latin-ext face also covers U+20AA and is declared later, so
+ * the shekel sign alone made home download the three latin-ext files (32 KB). Declared last, these
+ * win for that one character; the glyph is the same.
+ */
+@font-face {
+  font-family: 'Rubik';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('@fontsource/rubik/files/rubik-hebrew-400-normal.woff2') format('woff2');
+  unicode-range: U+20AA;
+}
+@font-face {
+  font-family: 'Rubik';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('@fontsource/rubik/files/rubik-hebrew-500-normal.woff2') format('woff2');
+  unicode-range: U+20AA;
+}
+@font-face {
+  font-family: 'Rubik';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('@fontsource/rubik/files/rubik-hebrew-700-normal.woff2') format('woff2');
+  unicode-range: U+20AA;
 }

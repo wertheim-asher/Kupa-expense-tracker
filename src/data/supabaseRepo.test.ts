@@ -76,6 +76,19 @@ describe('personal code', () => {
     await repo.joinHousehold('ABC234', '', 'ABCDEFGHJKMN')
     expect(offlineCache.get().personalCode).toBeUndefined()
   })
+
+  it('alone takes the seat back on a new device: no invite code, no name', async () => {
+    const client = fakeClient({ join: { data: { household_id: 'h1', member_id: 'm1', rejoined: true }, error: null } })
+    const rpc = vi.spyOn(client, 'rpc')
+    const repo = new SupabaseRepo(client)
+    expect(await repo.joinHousehold('', '', 'ABCDEFGHJKMN')).toEqual({ householdId: 'h1', memberId: 'm1' })
+    expect(rpc).toHaveBeenCalledWith('join_household', { p_code: '', p_display_name: '', p_personal_code: 'ABCDEFGHJKMN' })
+  })
+
+  it('a wrong personal code is reported as such', async () => {
+    const repo = new SupabaseRepo(fakeClient({ join: { data: null, error: { message: 'personal_code_invalid', code: 'P0001' } } }))
+    await expect(repo.joinHousehold('', '', 'AAAAAAAAAAAA')).rejects.toMatchObject({ code: 'personal_code_invalid' })
+  })
 })
 
 describe('getSession with an expired login', () => {
@@ -109,5 +122,53 @@ describe('getSession on a refresh', () => {
     expect(lookups()).toBe(1)
     expect(await repo.getSession()).toEqual({ householdId: 'h1', memberId: 'm1' })
     expect(lookups()).toBe(1)
+  })
+})
+
+describe('opening with the login seen last time', () => {
+  const login = { data: { session: { user: { id: 'u1' } } }, error: null }
+
+  it('uses the cached seat at once and checks it with the server alongside', async () => {
+    offlineCache.update({ session: { householdId: 'h1', memberId: 'm1' }, sessionUserId: 'u1' })
+    const client = fakeClient({ authSession: login, memberRows: [{ id: 'm1', household_id: 'h1' }] })
+    const from = vi.spyOn(client, 'from')
+    const repo = new SupabaseRepo(client)
+    expect(await repo.getSession()).toEqual({ householdId: 'h1', memberId: 'm1' })
+    expect(await repo.seatConfirmed()).toBe(true)
+    expect(from.mock.calls.filter(([table]) => table === 'members')).toHaveLength(1)
+  })
+
+  it('follows the server when the seat was taken back on another device, and says so once', async () => {
+    offlineCache.update({ session: { householdId: 'h1', memberId: 'm1' }, sessionUserId: 'u1' })
+    const repo = new SupabaseRepo(fakeClient({ authSession: login, memberRows: [] }))
+    expect(await repo.getSession()).toEqual({ householdId: 'h1', memberId: 'm1' })
+    expect(await repo.seatConfirmed()).toBe(false)
+    expect(await repo.seatConfirmed()).toBe(true)
+    expect(offlineCache.get().session).toBeUndefined()
+    expect(await repo.getSession()).toBeNull()
+  })
+
+  it('looks the seat up again on the next load when the check got no answer', async () => {
+    offlineCache.update({ session: { householdId: 'h1', memberId: 'm1' }, sessionUserId: 'u1' })
+    const answers: Parameters<typeof fakeClient>[0] = { authSession: login }
+    const client = fakeClient(answers)
+    const repo = new SupabaseRepo(client)
+    // The check fails (no answer from the server).
+    const fromSpy = vi.spyOn(client, 'from').mockImplementationOnce(() => {
+      throw new Error('Failed to fetch')
+    })
+    expect(await repo.getSession()).toEqual({ householdId: 'h1', memberId: 'm1' })
+    expect(await repo.seatConfirmed()).toBe(true)
+    fromSpy.mockRestore()
+    // The seat was in fact taken back: the next load asks the server and follows it.
+    answers.memberRows = []
+    expect(await repo.getSession()).toBeNull()
+  })
+
+  it('asks the server first when the cached seat belongs to another login', async () => {
+    offlineCache.update({ session: { householdId: 'h1', memberId: 'm1' }, sessionUserId: 'someone-else' })
+    const repo = new SupabaseRepo(fakeClient({ authSession: login, memberRows: [{ id: 'm2', household_id: 'h2' }] }))
+    expect(await repo.getSession()).toEqual({ householdId: 'h2', memberId: 'm2' })
+    expect(offlineCache.get()).toMatchObject({ session: { householdId: 'h2', memberId: 'm2' }, sessionUserId: 'u1' })
   })
 })

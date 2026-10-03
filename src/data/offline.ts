@@ -22,6 +22,8 @@ export interface QueuedEvent {
 
 export interface OfflineCache {
   session?: Session
+  /** The login `session` was looked up for: the next open can use that seat at once and check it alongside. */
+  sessionUserId?: string
   household?: Household
   members?: Member[]
   /** Expense lists by "from|toExclusive". */

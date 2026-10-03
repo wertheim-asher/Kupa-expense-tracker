@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
-import { useReadyData } from '../../app/DataProvider.tsx'
+import { useReadyData, withExpense, withoutExpense } from '../../app/DataProvider.tsx'
 import { LIMITS, TIMING } from '../../config.ts'
 import type { CategoryId } from '../../domain/categories.ts'
 import { cycleFor, todayInIsrael } from '../../domain/cycle.ts'
@@ -80,7 +80,7 @@ function AddSheetBody({ startedAt }: { startedAt: number }) {
 
   const undo = async (id: string) => {
     try {
-      await run((r) => r.deleteExpense(id))
+      await run((r) => r.deleteExpense(id), (list) => withoutExpense(list, id))
       repo.track('undo')
       toast.show({ message: t('toast.undone') })
     } catch {
@@ -111,7 +111,10 @@ function AddSheetBody({ startedAt }: { startedAt: number }) {
       return
     }
     try {
-      await run((r) => r.addExpense({ id, amountAgorot: amount, category, spentOn, logDurationMs: durationMs }))
+      await run(
+        (r) => r.addExpense({ id, amountAgorot: amount, category, spentOn, logDurationMs: durationMs }),
+        (list, saved, cycle) => withExpense(list, saved, cycle),
+      )
     } catch {
       savingRef.current = false
       setSaving(false)

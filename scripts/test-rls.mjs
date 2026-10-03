@@ -117,10 +117,10 @@ check('a wrong personal code is rejected', guess.error?.message?.includes('perso
 const already = await b.rpc('join_household', { p_code: code, p_display_name: 'again' })
 check('joining twice gives already_member', already.error?.message?.includes('already_member') === true, already.error?.message)
 
-// --- A on a new phone takes the seat back with invite code + personal code ---
+// --- A on a new phone takes the seat back with invite code + personal code (the way before 0003; still works) ---
 const newPhone = await anonymousUser()
 const rejoin = await newPhone.rpc('join_household', { p_code: code, p_display_name: '', p_personal_code: aPersonal })
-check('A on a new phone takes the same seat back with the personal code', !rejoin.error && rejoin.data?.member_id === aMember, rejoin.error?.message)
+check('A on a new phone takes the same seat back with invite code + personal code', !rejoin.error && rejoin.data?.member_id === aMember, rejoin.error?.message)
 const oldPhone = await a.from('expenses').select('id').eq('household_id', hid)
 check('A\'s old phone no longer sees the household', !oldPhone.error && oldPhone.data.length === 0, oldPhone.error?.message ?? `${oldPhone.data?.length} rows`)
 const newSecret = await newPhone.from('member_secrets').select('personal_code').eq('member_id', aMember).maybeSingle()
@@ -128,15 +128,27 @@ check('the personal code changed after use', !newSecret.error && newSecret.data?
 const reuse = await (await anonymousUser()).rpc('join_household', { p_code: code, p_display_name: '', p_personal_code: aPersonal })
 check('the old personal code no longer works', reuse.error?.message?.includes('personal_code_invalid') === true, reuse.error?.message ?? 'joined!')
 
+// --- The personal code alone (the app's way since 0003): it finds its household by itself ---
+const guessAlone = await (await anonymousUser()).rpc('join_household', { p_code: '', p_display_name: '', p_personal_code: 'AAAAAAAAAAAA' })
+check('a wrong personal code alone is rejected', guessAlone.error?.message?.includes('personal_code_invalid') === true, guessAlone.error?.message ?? 'joined!')
+const aPersonal2 = newSecret.data?.personal_code
+const thirdPhone = await anonymousUser()
+const alone = await thirdPhone.rpc('join_household', { p_code: '', p_display_name: '', p_personal_code: aPersonal2 })
+check('A on a third phone takes the same seat back with the personal code alone', !alone.error && alone.data?.member_id === aMember && alone.data?.household_id === hid, alone.error?.message)
+const thirdSees = await thirdPhone.from('expenses').select('id').eq('household_id', hid)
+check('the third phone sees the shared expense', !thirdSees.error && thirdSees.data.length === 1, thirdSees.error?.message ?? `${thirdSees.data?.length} rows`)
+const secondPhone = await newPhone.from('expenses').select('id').eq('household_id', hid)
+check('the second phone no longer sees the household', !secondPhone.error && secondPhone.data.length === 0, secondPhone.error?.message ?? `${secondPhone.data?.length} rows`)
+const reuseAlone = await (await anonymousUser()).rpc('join_household', { p_code: '', p_display_name: '', p_personal_code: aPersonal2 })
+check('a used personal code alone no longer works', reuseAlone.error?.message?.includes('personal_code_invalid') === true, reuseAlone.error?.message ?? 'joined!')
+
 // --- One-member household: after a rejoin the old device cannot walk back in through the free seat ---
 const solo = await anonymousUser()
 const soloCreated = await solo.rpc('create_household', { p_display_name: `rls-test-solo-${run}`, p_budget_agorot: 100000, p_cycle_start_day: 1 })
 const soloSecret = await solo.from('member_secrets').select('personal_code').eq('member_id', soloCreated.data?.member_id).maybeSingle()
 const soloNew = await anonymousUser()
-const soloRejoin = await soloNew.rpc('join_household', {
-  p_code: soloCreated.data?.invite_code, p_display_name: '', p_personal_code: soloSecret.data?.personal_code,
-})
-check('solo member takes the seat back on a new phone', !soloRejoin.error && soloRejoin.data?.member_id === soloCreated.data?.member_id, soloRejoin.error?.message)
+const soloRejoin = await soloNew.rpc('join_household', { p_code: '', p_display_name: '', p_personal_code: soloSecret.data?.personal_code })
+check('solo member takes the seat back on a new phone with the personal code alone', !soloRejoin.error && soloRejoin.data?.member_id === soloCreated.data?.member_id, soloRejoin.error?.message)
 const soloHousehold = await soloNew.from('households').select('invite_code').eq('id', soloCreated.data?.household_id).single()
 check('the invite code changed because the second seat was free', !soloHousehold.error && soloHousehold.data.invite_code !== soloCreated.data?.invite_code, soloHousehold.error?.message)
 const sneakBack = await solo.rpc('join_household', { p_code: soloCreated.data?.invite_code, p_display_name: 'old phone' })

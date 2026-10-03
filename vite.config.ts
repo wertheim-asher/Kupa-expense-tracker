@@ -16,11 +16,39 @@ function preconnect(url: string | undefined): Plugin {
   }
 }
 
+/**
+ * When the service worker serves the page (every launch after the first), the fonts home uses are in
+ * its cache: ask for them at once, so home paints in Rubik and is not laid out again when they arrive.
+ * Not on a first visit, where they would compete with the app's code on a slow connection.
+ */
+function preloadCachedFonts(pattern: RegExp): Plugin {
+  return {
+    name: 'kupa-preload-cached-fonts',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        const files = Object.keys(ctx.bundle ?? {})
+          .filter((file) => pattern.test(file))
+          .map((file) => `/${file}`)
+        if (files.length === 0) return html
+        const script =
+          `<script>try{if(navigator.serviceWorker&&navigator.serviceWorker.controller)${JSON.stringify(files)}.forEach(function(h){` +
+          `var l=document.createElement('link');l.rel='preload';l.as='font';l.type='font/woff2';l.crossOrigin='';l.href=h;document.head.appendChild(l)})}catch(e){}</script>`
+        // Right after the charset, before the stylesheet: an inline script after a stylesheet waits for it.
+        return html.replace(/(<meta charset="UTF-8" \/>)/, `$1\n    ${script}`)
+      },
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     tailwindcss(),
     preconnect(loadEnv(mode, '.', 'VITE_').VITE_SUPABASE_URL),
+    // The faces home draws with: Hebrew and Latin, regular, medium and bold (₪ comes from Hebrew).
+    preloadCachedFonts(/rubik-(hebrew|latin)-(400|500|700)-normal-[\w-]+\.woff2$/),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',

@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { repoFor } from '../data/mode.ts'
 import { addDays, cycleFor, shiftCycle, todayInIsrael } from '../domain/cycle.ts'
 import { DEMO } from '../data/demoSeed.ts'
@@ -89,6 +89,24 @@ describe('core flow (LocalRepo)', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(stored().expenses).toHaveLength(1)
     expect(stored().expenses[0].amountAgorot).toBe(1250)
+  })
+
+  it('shows a save at once, without waiting for the reload that follows it', async () => {
+    const user = userEvent.setup()
+    render(<App initialMode="local" />)
+    await createBudget(user)
+    // From here on the reload never finishes (a slow server): the saved expense must show anyway.
+    const repo = repoFor('local')
+    const slow = vi.spyOn(repo, 'getHousehold').mockImplementation(() => new Promise(() => {}))
+    await user.click(screen.getByRole('button', { name: 'הוספת הוצאה' }))
+    const sheet = await screen.findByRole('dialog', { name: 'הוצאה חדשה' })
+    await typeOnKeypad(user, '45')
+    await user.click(within(sheet).getByRole('button', { name: 'סופר' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(bigNumber()).toContain('8,955'))
+    expect(screen.getByText('סופר', { selector: 'span' })).toBeInTheDocument()
+    expect(slow).toHaveBeenCalled()
+    slow.mockRestore()
   })
 
   it('tracks add_cancel with had_amount when the sheet is closed without saving', async () => {

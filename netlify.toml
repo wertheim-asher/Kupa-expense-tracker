@@ -5,6 +5,12 @@
 [build.environment]
   NODE_VERSION = "22"
 
+# On the free plan every production deploy costs 15 of 300 monthly credits, and at 300 every site
+# pauses until the next cycle. A change that does not touch the app (notes, the build log, the pilot
+# kit, the class QR codes) skips the production build. Deploy previews are free and always build.
+[context.production]
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':(exclude)*.md' ':(exclude)pilot/' ':(exclude)presentation/'"
+
 # Serve the PWA manifest with its proper type (Netlify defaults .webmanifest to octet-stream).
 [[headers]]
   for = "/manifest.webmanifest"

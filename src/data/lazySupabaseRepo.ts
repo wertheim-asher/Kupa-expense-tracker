@@ -2,10 +2,10 @@
 // loads only when this device has, creates or joins a shared budget. A visitor on the welcome
 // screen or in the demo never downloads it.
 
-import type { CreateInput, ExpensePatch, Household, HouseholdPatch, NewExpense } from '../domain/types.ts'
+import type { CreateInput, Expense, ExpensePatch, Household, HouseholdPatch, NewExpense } from '../domain/types.ts'
 import { APP } from '../config.ts'
-import { offlineCache } from './offline.ts'
-import { RepoError, type Repo } from './repo.ts'
+import { offlineCache, outbox, pendingExpense } from './offline.ts'
+import { RepoError, type CachedHome, type Repo } from './repo.ts'
 import type { SupabaseRepo } from './supabaseRepo.ts'
 
 /** Events tracked before the library loads (app_open on the welcome screen) wait here. */
@@ -19,9 +19,15 @@ function hasStoredLogin(): boolean {
   }
 }
 
+/** Newest first, as listExpenses returns them. */
+const byNewest = (a: Expense, b: Expense) =>
+  a.spentOn === b.spentOn ? b.createdAt.localeCompare(a.createdAt) : b.spentOn.localeCompare(a.spentOn)
+
 export class LazySupabaseRepo implements Repo {
   private loading: Promise<SupabaseRepo> | null = null
   private loaded: SupabaseRepo | null = null
+  /** The latest getSession call: writes wait for it, so a save tapped right after open has its seat. */
+  private sessionCall: Promise<unknown> | null = null
   private readonly listeners = new Set<{ onChange: () => void; off: (() => void) | null }>()
   private readonly queued: Array<[string, Record<string, unknown> | undefined]> = []
 
@@ -43,10 +49,48 @@ export class LazySupabaseRepo implements Repo {
     return this.loading
   }
 
+  /** The repo, once the session it needs is known (the app can open on cached data before that). */
+  private async ready(): Promise<SupabaseRepo> {
+    const repo = await this.load()
+    await this.sessionCall?.catch(() => undefined)
+    return repo
+  }
+
   async getSession() {
     // Nothing on this device to sign in with (first visit, welcome screen): no library needed.
     if (!this.loaded && !hasStoredLogin() && !offlineCache.get().session) return null
-    return (await this.load()).getSession()
+    const call = this.load().then((repo) => repo.getSession())
+    this.sessionCall = call
+    return call
+  }
+
+  seatConfirmed(): Promise<boolean> {
+    return this.loaded ? this.loaded.seatConfirmed() : Promise.resolve(true)
+  }
+
+  peekCached(rangeFor: (household: Household) => { from: string; toExclusive: string }): CachedHome | null {
+    if (!hasStoredLogin()) return null
+    const cache = offlineCache.get()
+    const { session, household, members } = cache
+    if (!session || !household || household.id !== session.householdId || !members?.length) return null
+    const range = rangeFor(household)
+    const list = cache.expenses?.[`${range.from}|${range.toExclusive}`]
+    // A cycle never loaded on this device (a new one started since the last visit): open as before.
+    if (!list) return null
+    const shown = list.filter((e) => e.householdId === household.id)
+    const waiting = outbox
+      .all()
+      .filter(
+        (i) =>
+          i.householdId === household.id &&
+          i.input.spentOn >= range.from &&
+          i.input.spentOn < range.toExclusive &&
+          !shown.some((e) => e.id === i.input.id),
+      )
+      .map(pendingExpense)
+    // The library starts loading now, while the cached home renders.
+    void this.load().catch(() => undefined)
+    return { session, household, members, expenses: [...shown, ...waiting].sort(byNewest) }
   }
 
   async createHousehold(input: CreateInput) {
@@ -58,11 +102,16 @@ export class LazySupabaseRepo implements Repo {
   }
 
   async getMyPersonalCode() {
-    return (await this.load()).getMyPersonalCode()
+    return (await this.ready()).getMyPersonalCode()
   }
 
   peekHousehold(): Household | null {
     return offlineCache.get().household ?? null
+  }
+
+  peekPersonalCode(): string | null | undefined {
+    const { personalCode, session } = offlineCache.get()
+    return personalCode && personalCode.memberId === session?.memberId ? personalCode.code : undefined
   }
 
   async getHousehold() {
@@ -78,27 +127,27 @@ export class LazySupabaseRepo implements Repo {
   }
 
   async addExpense(input: NewExpense) {
-    return (await this.load()).addExpense(input)
+    return (await this.ready()).addExpense(input)
   }
 
   async updateExpense(id: string, patch: ExpensePatch) {
-    return (await this.load()).updateExpense(id, patch)
+    return (await this.ready()).updateExpense(id, patch)
   }
 
   async deleteExpense(id: string) {
-    return (await this.load()).deleteExpense(id)
+    return (await this.ready()).deleteExpense(id)
   }
 
   async restoreExpense(id: string) {
-    return (await this.load()).restoreExpense(id)
+    return (await this.ready()).restoreExpense(id)
   }
 
   async updateHousehold(patch: HouseholdPatch) {
-    return (await this.load()).updateHousehold(patch)
+    return (await this.ready()).updateHousehold(patch)
   }
 
   async updateMyName(name: string) {
-    return (await this.load()).updateMyName(name)
+    return (await this.ready()).updateMyName(name)
   }
 
   subscribe(onChange: () => void): () => void {
@@ -116,10 +165,10 @@ export class LazySupabaseRepo implements Repo {
   }
 
   async exportData() {
-    return (await this.load()).exportData()
+    return (await this.ready()).exportData()
   }
 
   async resetDevice() {
-    return (await this.load()).resetDevice()
+    return (await this.ready()).resetDevice()
   }
 }
