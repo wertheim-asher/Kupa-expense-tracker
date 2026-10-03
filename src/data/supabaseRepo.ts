@@ -383,8 +383,8 @@ export class SupabaseRepo implements Repo {
   private async checkSeat(userId: string, guess: Session): Promise<boolean> {
     try {
       const { data: rows, error } = await this.sb.from('members').select('id, household_id').eq('user_id', userId).limit(1)
-      // No answer (offline, server down): keep the seat, as an offline open does.
-      if (error) return true
+      // No answer (offline, server down): keep the seat, as an offline open does, but ask again on the next load.
+      if (error) return this.unconfirmed(guess)
       const row = rows?.[0] as { id: string; household_id: string } | undefined
       if (row && row.id === guess.memberId && row.household_id === guess.householdId) return true
       // Something else changed the session meanwhile (a join, a disconnect): that one stands.
@@ -396,8 +396,14 @@ export class SupabaseRepo implements Repo {
       this.notify()
       return false
     } catch {
-      return true
+      return this.unconfirmed(guess)
     }
+  }
+
+  /** The seat could not be checked: keep it, and forget the login, so the next getSession looks it up. */
+  private unconfirmed(guess: Session): true {
+    if (this.session === guess) this.sessionUserId = null
+    return true
   }
 
   async seatConfirmed(): Promise<boolean> {

@@ -148,6 +148,23 @@ describe('opening with the login seen last time', () => {
     expect(await repo.getSession()).toBeNull()
   })
 
+  it('looks the seat up again on the next load when the check got no answer', async () => {
+    offlineCache.update({ session: { householdId: 'h1', memberId: 'm1' }, sessionUserId: 'u1' })
+    const answers: Parameters<typeof fakeClient>[0] = { authSession: login }
+    const client = fakeClient(answers)
+    const repo = new SupabaseRepo(client)
+    // The check fails (no answer from the server).
+    const fromSpy = vi.spyOn(client, 'from').mockImplementationOnce(() => {
+      throw new Error('Failed to fetch')
+    })
+    expect(await repo.getSession()).toEqual({ householdId: 'h1', memberId: 'm1' })
+    expect(await repo.seatConfirmed()).toBe(true)
+    fromSpy.mockRestore()
+    // The seat was in fact taken back: the next load asks the server and follows it.
+    answers.memberRows = []
+    expect(await repo.getSession()).toBeNull()
+  })
+
   it('asks the server first when the cached seat belongs to another login', async () => {
     offlineCache.update({ session: { householdId: 'h1', memberId: 'm1' }, sessionUserId: 'someone-else' })
     const repo = new SupabaseRepo(fakeClient({ authSession: login, memberRows: [{ id: 'm2', household_id: 'h2' }] }))
