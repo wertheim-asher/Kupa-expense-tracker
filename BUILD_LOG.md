@@ -136,6 +136,7 @@
 | 2026-10-02 | Asher | Ran `npm run test:rls` on his PC after both merges (16:20): all 36 checks pass against the real project ("All RLS checks passed."). This cloud session could not reach Supabase. | Logged. |
 | 2026-10-02 | Asher | The presentation moved to October 18. Picked for the two weeks: a pilot with real numbers, English and dark mode, the automatic phone test, and a weekly Supabase reminder. | Reminders set (Supabase: October 8 and 15; checklist: October 17). Pilot kit done first, because the pilot needs time. |
 | 2026-10-02 | Asher | Forwarded Netlify's email: 50% of the 300 monthly credits used (cycle September 13 to October 12). | Explained the risk (sites pause at 300) and changed how we ship: one production deploy per batch, docs-only changes skip the build. |
+| 2026-10-03 | Asher | Checked the live app after the PR #4 merge: it works. Looked at the remaining optional ideas (Suggested, not built) and chose none of them. | Logged; the list stays parked. |
 | 2026-10-03 | Asher | After the merge of PR #3: `git pull`, then `npm run test:rls` on his PC against the real project: all 41 checks pass ("All RLS checks passed."), including the 5 new ones for the personal code alone. | Logged. |
 | 2026-10-02 | Asher | Tested the preview with one code and the link: "it all looks good". Ran 0003 in Supabase. Asked for more speed and responsiveness, then a merge while his PC is off. | Overnight review of the one-code change (22 agents): 2 fixes (iPhone note, new link after coming back alone) and 3 doc fixes. Speed work done and measured (see Decisions); a final review of the speed changes before the merge. |
 | 2026-10-02 | Asher | Before merging PR #3: two codes to remember or copy feel clunky. "Isn't there a simpler way?" | Proposed one code with a "send to myself" link; he picked it. Built (see Decisions). Checked in a phone-sized browser against a fake server: settings with and without a free seat, the warning, the link on a new phone (filled in, one tap, the toast sends the new link), typing and pasting, a wrong code, a solo rejoin, a phone that is already connected; English and dark. 191 unit tests, smoke test passes. |
@@ -167,11 +168,11 @@ Verified on 2026-10-01 by four audit agents against the live site (headless Chro
 ## Suggested, not built (scope parking lot)
 | Idea | Why it could matter | Why not now |
 |---|---|---|
-| Collect usage events in one place (server) | Measure assumption 1 (logging speed, cancels) across every user, including classmates who scan the QR, not just one phone. | Needs the shared backend (Phase 3, "go sync"). |
+| ~~Collect usage events in one place (server)~~ | Built in Phase 3 (the events table; `pilot/metrics.sql` reads it). | |
 | Move a device's local data into the shared household when sync arrives | Early users, including Asher's own test budget, keep their history. | Only matters once Phase 3 exists. |
-| See and edit expenses that moved to an earlier cycle | Today they are reachable only in the CSV after a date edit. | Previous-cycle navigation (spec P1) was cut for the deadline. |
+| ~~See and edit expenses that moved to an earlier cycle~~ | Built on 2026-10-02 with the history view (PR #2). | |
 | A hint in the edit sheet before saving a date outside the current cycle | The person knows the row will leave the list before it happens. | The toast after saving now says where it went. |
-| Safer writes between tabs (IndexedDB transactions or Web Locks) | Two tabs saving within about 5ms can lose one expense. | No person can hit it; Phase 3 moves shared writes to the server. |
+| ~~Safer writes between tabs (IndexedDB transactions or Web Locks)~~ | Shared budgets write to the server since Phase 3; only on-device mode keeps the old risk, which no person can hit. | |
 | A one-time nudge after setup: "send yourself the link" | Most people open settings only after they have lost a phone, and then the code is gone. | Adds a step to setup, which SPEC keeps short; the pilot will show whether anyone loses access. |
 | Your partner brings you back (a one-time link from the partner's phone) | No code to keep in the common case: one phone lost, the other still working. | A partner could then take your seat, and it needs new server code; the personal code already covers it. |
 | ~~Show the last data at once on launch, then refresh~~ | Built on 2026-10-02 at Asher's request for speed. | |
