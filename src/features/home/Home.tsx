@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Clock, Plus, Settings as SettingsIcon, Wallet } from 'lucide-react'
-import { memo } from 'react'
+import { memo, useCallback, useRef, type MouseEvent } from 'react'
 import { Link, Outlet, useMatch, useNavigate } from 'react-router'
 import { useReadyData } from '../../app/DataProvider.tsx'
 import { LIMITS, TIMING } from '../../config.ts'
@@ -30,6 +30,19 @@ export function Home() {
   // History: earlier cycles, back as far as expenses can be dated (a year).
   const past = viewOffset < 0
   const canGoBack = shiftCycle(cycle, household.cycleStartDay, -1).lastDay >= addDays(today, -LIMITS.maxPastDays)
+
+  // One handler for every row, the same on every render, so the rows stay memoized. The rows are
+  // plain links: a router <Link> reads the location, so each would re-render when a sheet opens or closes.
+  const navigateRef = useRef(navigate)
+  navigateRef.current = navigate
+  const openExpense = useCallback((event: MouseEvent<HTMLAnchorElement>, id: string) => {
+    // A new tab or window: leave it to the browser, as <Link> does.
+    if (event.button !== 0 || event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) return
+    event.preventDefault()
+    // The second tap of a double tap on a category lands here right after a save.
+    if (justSaved()) return
+    navigateRef.current(`/expense/${id}`, { state: { fromApp: true } })
+  }, [])
 
   const startAdd = () => {
     beginAddSession(performance.now())
@@ -98,7 +111,7 @@ export function Home() {
             {expenses.length === 0 ? (
               <EmptyState past={past} />
             ) : (
-              <ExpenseList expenses={expenses} members={members} today={today} highlightIds={highlightIds} />
+              <ExpenseList expenses={expenses} members={members} today={today} highlightIds={highlightIds} onOpen={openExpense} />
             )}
           </section>
         </main>
@@ -137,21 +150,11 @@ const Summary = memo(function Summary({
   /** An earlier cycle: what was left at its end, and no days left. */
   past: boolean
 }) {
-  const shown = useAnimatedNumber(leftForDisplay(leftAgorot), TIMING.numberAnimMs)
   const isOver = leftAgorot < 0
-  // Follows the animated value, so the text flips when the count crosses zero.
-  const over = shown < 0
-  const { before, after } = around(over ? 'home.over' : past ? 'home.leftPast' : 'home.left', 'amount')
 
   return (
     <section aria-labelledby="summary-title" className="pt-6 text-center">
-      <h2 id="summary-title" className="flex flex-col items-center">
-        {before && <span className={cls('text-lg', over ? 'font-medium text-over' : 'text-muted')}>{before}</span>}
-        <span className={cls('text-[56px] leading-[1.15] font-bold', over ? 'text-over' : 'text-text')}>
-          <Money agorot={Math.abs(shown) * 100} />
-        </span>
-        {after && <span className={cls('text-lg', over ? 'font-medium text-over' : 'text-muted')}>{after}</span>}
-      </h2>
+      <BigAmount leftAgorot={leftAgorot} past={past} />
       <p className="mt-3 text-muted">
         {past
           ? t('home.cycleEnded')
@@ -171,6 +174,23 @@ const Summary = memo(function Summary({
   )
 })
 
+/** The big number. It counts to a new value frame by frame, so it is its own component: only it re-renders. */
+function BigAmount({ leftAgorot, past }: { leftAgorot: number; past: boolean }) {
+  const shown = useAnimatedNumber(leftForDisplay(leftAgorot), TIMING.numberAnimMs)
+  // Follows the animated value, so the text flips when the count crosses zero.
+  const over = shown < 0
+  const { before, after } = around(over ? 'home.over' : past ? 'home.leftPast' : 'home.left', 'amount')
+  return (
+    <h2 id="summary-title" className="flex flex-col items-center">
+      {before && <span className={cls('text-lg', over ? 'font-medium text-over' : 'text-muted')}>{before}</span>}
+      <span className={cls('text-[56px] leading-[1.15] font-bold', over ? 'text-over' : 'text-text')}>
+        <Money agorot={Math.abs(shown) * 100} />
+      </span>
+      {after && <span className={cls('text-lg', over ? 'font-medium text-over' : 'text-muted')}>{after}</span>}
+    </h2>
+  )
+}
+
 function groupByDay(expenses: Expense[]): Array<{ date: IsoDate; items: Expense[] }> {
   const groups: Array<{ date: IsoDate; items: Expense[] }> = []
   for (const e of expenses) {
@@ -186,11 +206,13 @@ const ExpenseList = memo(function ExpenseList({
   members,
   today,
   highlightIds,
+  onOpen,
 }: {
   expenses: Expense[]
   members: Member[]
   today: IsoDate
   highlightIds: ReadonlySet<string>
+  onOpen: (event: MouseEvent<HTMLAnchorElement>, id: string) => void
 }) {
   return (
     <div className="space-y-5">
@@ -202,43 +224,62 @@ const ExpenseList = memo(function ExpenseList({
           </h3>
           <ul className="divide-y divide-border overflow-hidden rounded-2xl bg-surface">
             {group.items.map((e) => (
-              <li key={e.id}>
-                <Link
-                  to={`/expense/${e.id}`}
-                  state={{ fromApp: true }}
-                  onClick={(event) => {
-                    // The second tap of a double tap on a category lands here right after a save.
-                    if (justSaved()) event.preventDefault()
-                  }}
-                  className={cls(
-                    // Inset focus ring: the list's overflow-hidden would clip an outer one.
-                    'flex min-h-16 items-center gap-3 px-4 py-3 active:bg-bg focus-visible:-outline-offset-3',
-                    highlightIds.has(e.id) && 'animate-highlight',
-                  )}
-                >
-                  <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-full bg-bg text-xl">
-                    {CATEGORY_EMOJI[e.category]}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-start">{categoryName(e.category)}</span>
-                  <MemberChip member={members.find((m) => m.id === e.memberId)} />
-                  {/* Fixed-width amount slot keeps the member chips in one column across rows. */}
-                  <span className="min-w-[6.5rem] shrink-0 text-end">
-                    {e.pending && (
-                      // Saved offline, waiting to be sent.
-                      <span className="me-1 inline-flex align-middle text-muted">
-                        <Clock size={14} aria-hidden="true" />
-                        <span className="sr-only">{t('home.pending')}</span>
-                      </span>
-                    )}
-                    <Money agorot={e.amountAgorot} className="font-medium" />
-                  </span>
-                </Link>
-              </li>
+              <ExpenseRow
+                key={e.id}
+                expense={e}
+                member={members.find((m) => m.id === e.memberId)}
+                highlighted={highlightIds.has(e.id)}
+                onOpen={onOpen}
+              />
             ))}
           </ul>
         </section>
       ))}
     </div>
+  )
+})
+
+// Memoized: a highlight starting or ending, or one expense added, re-renders that row only.
+const ExpenseRow = memo(function ExpenseRow({
+  expense: e,
+  member,
+  highlighted,
+  onOpen,
+}: {
+  expense: Expense
+  member: Member | undefined
+  highlighted: boolean
+  onOpen: (event: MouseEvent<HTMLAnchorElement>, id: string) => void
+}) {
+  return (
+    <li>
+      <a
+        href={`/expense/${e.id}`}
+        onClick={(event) => onOpen(event, e.id)}
+        className={cls(
+          // Inset focus ring: the list's overflow-hidden would clip an outer one.
+          'flex min-h-16 items-center gap-3 px-4 py-3 active:bg-bg focus-visible:-outline-offset-3',
+          highlighted && 'animate-highlight',
+        )}
+      >
+        <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-full bg-bg text-xl">
+          {CATEGORY_EMOJI[e.category]}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-start">{categoryName(e.category)}</span>
+        <MemberChip member={member} />
+        {/* Fixed-width amount slot keeps the member chips in one column across rows. */}
+        <span className="min-w-[6.5rem] shrink-0 text-end">
+          {e.pending && (
+            // Saved offline, waiting to be sent.
+            <span className="me-1 inline-flex align-middle text-muted">
+              <Clock size={14} aria-hidden="true" />
+              <span className="sr-only">{t('home.pending')}</span>
+            </span>
+          )}
+          <Money agorot={e.amountAgorot} className="font-medium" />
+        </span>
+      </a>
+    </li>
   )
 })
 

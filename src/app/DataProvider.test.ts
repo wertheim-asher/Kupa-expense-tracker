@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Cycle } from '../domain/cycle.ts'
 import type { Expense } from '../domain/types.ts'
-import { withExpense, withoutExpense } from './DataProvider.tsx'
+import { sameAs, withExpense, withoutExpense, type Snapshot } from './DataProvider.tsx'
 
 const cycle: Cycle = { start: '2026-09-10', endExclusive: '2026-10-10', lastDay: '2026-10-09' }
 
@@ -45,5 +45,45 @@ describe('the list on screen right after a save (before the reload)', () => {
   it('removes a deleted expense', () => {
     expect(withoutExpense(list, 'b').map((e) => e.id)).toEqual(['a'])
     expect(withoutExpense(list, 'zzz')).toEqual(list)
+  })
+})
+
+describe('a reload that brings the same data', () => {
+  const snap = (expenses: Expense[]): Snapshot => ({
+    status: 'ready',
+    today: '2026-10-02',
+    session: { householdId: 'h1', memberId: 'm1' },
+    household: { id: 'h1', budgetAgorot: 900000, cycleStartDay: 10, inviteCode: 'ABC234', createdAt: 'x', updatedAt: 'x' },
+    members: [{ id: 'm1', householdId: 'h1', displayName: 'Noa', color: 'teal', createdAt: 'x' }],
+    cycle,
+    currentCycle: cycle,
+    viewOffset: 0,
+    expenses,
+  })
+
+  it('keeps the snapshot on screen, so nothing re-renders', () => {
+    const prev = snap(list)
+    // The server sends new objects with the same values.
+    const next = snap(list.map((e) => ({ ...e })))
+    expect(sameAs(prev, next)).toBe(prev)
+  })
+
+  it('makes only the changed row a new object', () => {
+    const prev = snap(list)
+    const next = snap([{ ...list[0], amountAgorot: 999 }, { ...list[1] }])
+    const merged = sameAs(prev, next)
+    expect(merged).not.toBe(prev)
+    expect(merged.expenses[0]).not.toBe(prev.expenses[0])
+    expect(merged.expenses[1]).toBe(prev.expenses[1])
+    expect(merged.household).toBe(prev.household)
+    expect(merged.members).toBe(prev.members)
+  })
+
+  it('counts a sent offline expense (no more clock) and a new order as changes', () => {
+    const pending = { ...list[0], pending: true }
+    const prev = snap([pending, list[1]])
+    const sent = sameAs(prev, snap([{ ...list[0] }, list[1]]))
+    expect(sent.expenses[0].pending).toBeUndefined()
+    expect(sameAs(prev, snap([list[1], pending])).expenses.map((e) => e.id)).toEqual(['a', 'b'])
   })
 })
