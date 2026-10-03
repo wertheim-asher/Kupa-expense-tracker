@@ -3,8 +3,7 @@ Goal: shared-budget PWA for couples (Hebrew RTL): log an expense in 3 taps, alwa
 
 ## Where things are
 - Live: https://kupa-expense-tracker.netlify.app from `main`. Every push to `main` auto-deploys; every PR gets a deploy preview.
-- Merged: partner sync (PR #1); earlier-cycle history, demo "simulate partner expense", faster first open (PR #2).
-- PR #3 (pilot kit in `pilot/`, dark mode with a 3-way setting, English, one code to come back with a "send to myself" link, speed work, Playwright smoke test, GitHub Actions tests on every PR, docs-only pushes skip the production build): Asher tested the one-code preview and asked for the speed work and a merge from the cloud while his PC was off.
+- Merged: partner sync (PR #1); earlier-cycle history, demo "simulate partner expense", faster first open (PR #2); pilot kit, dark mode, English, one code to come back, speed work, smoke test (PR #3, Oct 3).
 - Two Claude sessions work on this repo (Asher's PC and a cloud session). Changes reach `main` only through PRs, so merge `main` into a branch before opening or updating a PR.
 - Netlify free plan: 15 of 300 monthly credits per production deploy; at 300 every site pauses until the cycle resets (Oct 13). Half was used by Oct 2. Ship in batches.
 - Supabase https://xblsobdgqmwvnbdhowiq.supabase.co: migrations 0001, 0002 and 0003 applied (Asher ran 0003 on Oct 2, evening). Keys: `.env.local` (git-ignored) and Netlify env vars.
