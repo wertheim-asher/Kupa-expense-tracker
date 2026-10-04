@@ -23,7 +23,7 @@ Goal: shared-budget PWA for couples (Hebrew RTL): log an expense in 3 taps, alwa
 - GitHub Actions on every PR: type check, 205 unit and flow tests, Playwright phone smoke test (demo: add ₪45, undo, edit, switch to English). All green on PR #3 and PR #4.
 - Fake-server suites (cloud session scratchpad, not in the repo): opening on cached data (reopen, seat taken back, save right after open, new cycle, offline), the code screens (46 checks), the iPhone note and the solo rejoin.
 - Oct 2, on the live site (before PR #3): two-browser sync suite 16/16, offline suite 21/21. Scripts on Asher's PC: sync-e2e.mjs, sync-offline.mjs, preview-regression.mjs in the PC session's scratchpad\shots folder (run with BASE=<url>).
-- Reviews: adversarial multi-agent reviews of the one-code change and of the speed work; real findings fixed. A review of PR #4 is running again (the first run stopped when the session restarted).
+- Reviews: adversarial multi-agent reviews of the one-code change and of the speed work; real findings fixed. The review of PR #4 (2 agents, re-run on Oct 4 after a session restart) found nothing.
 
 ## Key decisions (why)
 - Demo mode is always on-device, so the presentation can never break on the network.
