@@ -1,0 +1,37 @@
+# Keeps the free Supabase project "kupa" from pausing after 7 days without activity.
+# Once a day it calls the auth API and runs one tiny database read with the public anon key.
+# A 401 on the read is expected (anon has no table access), but the query still reaches Postgres.
+# Needs one repo secret: SUPABASE_ANON_KEY (Supabase > Project Settings > API Keys, the anon or publishable key).
+# The run fails, and GitHub emails Asher, if the key is missing or Supabase does not answer.
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: '17 5 * * *' # every day at 05:17 UTC
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping Supabase
+        env:
+          SUPABASE_URL: https://xblsobdgqmwvnbdhowiq.supabase.co
+          KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::Add the SUPABASE_ANON_KEY secret in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          health=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -H "apikey: $KEY" "$SUPABASE_URL/auth/v1/health")
+          db=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -H "apikey: $KEY" "$SUPABASE_URL/rest/v1/expenses?select=id&limit=1")
+          echo "auth health: $health, database read: $db"
+          if [ "$health" != "200" ]; then
+            echo "::error::Supabase did not answer (auth health $health). Check the key, or whether the project is paused."
+            exit 1
+          fi
+          case "$db" in
+            200|401|403) ;;
+            *) echo "::error::Database read returned $db."; exit 1 ;;
+          esac
