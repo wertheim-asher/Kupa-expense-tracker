@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest'
+import { LIMITS } from '../config.ts'
+import { CATEGORY_IDS } from '../domain/categories.ts'
 import { addDays, cycleFor, isInCycle, shiftCycle } from '../domain/cycle.ts'
-import { buildDemoSeed, CATEGORY_RANGES, currentTargetAgorot, DEMO, israelTimeToIso, mulberry32 } from './demoSeed.ts'
+import {
+  buildDemoSeed,
+  CATEGORY_RANGES,
+  currentTargetAgorot,
+  DEMO,
+  HISTORY,
+  israelTimeToIso,
+  mulberry32,
+  PARTNER_EXPENSES,
+} from './demoSeed.ts'
 
 const NOW = (today: string) => new Date(israelTimeToIso(today, 12, 0))
 
@@ -53,9 +64,24 @@ describe('buildDemoSeed', () => {
     const { seed, current, previous, cur, prev, curTotal, prevTotal } = split(today)
     const target = currentTargetAgorot(today, current)
 
-    // Every expense belongs to the current or the previous cycle, never in the future.
-    expect(cur.length + prev.length).toBe(seed.expenses.length)
+    // Every expense belongs to the current cycle or one of the earlier ones, never in the future,
+    // and never older than an expense date may be.
+    const earlier = HISTORY.map((_, i) => shiftCycle(current, DEMO.cycleStartDay, -(i + 1)))
+    const inEarlier = earlier.map((c) => seed.expenses.filter((e) => isInCycle(e.spentOn, c)))
+    expect(cur.length + inEarlier.reduce((n, list) => n + list.length, 0)).toBe(seed.expenses.length)
     for (const e of seed.expenses) expect(e.spentOn <= today).toBe(true)
+    for (const e of seed.expenses) expect(e.spentOn >= addDays(today, -LIMITS.maxPastDays)).toBe(true)
+
+    // Earlier cycles: the planned count and share of the budget each, no amount at its category's
+    // limit and no repeated amount in a category.
+    HISTORY.forEach(({ share, count }, i) => {
+      expect(inEarlier[i].length).toBe(count)
+      const total = inEarlier[i].reduce((s, e) => s + e.amountAgorot, 0)
+      expect(Math.abs(total - DEMO.budgetAgorot * share)).toBeLessThanOrEqual(100)
+      for (const e of inEarlier[i]) expect(e.amountAgorot).toBeLessThan(CATEGORY_RANGES[e.category].max)
+      for (const e of inEarlier[i]) expect(e.amountAgorot).toBeGreaterThan(CATEGORY_RANGES[e.category].min)
+      expect(new Set(inEarlier[i].map((e) => `${e.category}:${e.amountAgorot}`)).size).toBe(count)
+    })
 
     // Current cycle: exactly on target (whole shekels), never over budget.
     expect(Math.abs(curTotal - target)).toBeLessThanOrEqual(100)
@@ -102,6 +128,39 @@ describe('buildDemoSeed', () => {
   it('ids are unique', () => {
     const { seed } = split('2026-10-04')
     expect(new Set(seed.expenses.map((e) => e.id)).size).toBe(seed.expenses.length)
+  })
+
+  it('on the presentation day shows Oct 10 - Nov 9, with history back to Jan 10 - Feb 9', () => {
+    const { seed, current } = split('2026-10-18')
+    expect(current.start).toBe('2026-10-10')
+    expect(current.lastDay).toBe('2026-11-09')
+    const oldest = seed.expenses.map((e) => e.spentOn).sort()[0]
+    expect(oldest >= '2026-01-10' && oldest <= '2026-02-09').toBe(true)
+    expect(seed.household?.createdAt.slice(0, 10)).toBe('2026-01-10')
+    expect(seed.seededOn).toBe('2026-10-18')
+  })
+
+  it('keeps the current cycle on target and the previous one at 97% of the budget', () => {
+    const { cur, curTotal, prevTotal } = split('2026-10-04')
+    expect(curTotal).toBe(810_000)
+    expect(prevTotal).toBe(873_000)
+    expect(cur.every((e) => e.id.startsWith('demo-cur-'))).toBe(true)
+  })
+})
+
+describe('partner expenses (simulate)', () => {
+  it('has 20, each different, starting with the SPEC ₪84 groceries', () => {
+    expect(PARTNER_EXPENSES).toHaveLength(20)
+    expect(PARTNER_EXPENSES[0]).toEqual({ category: 'groceries', agorot: 8400 })
+    expect(new Set(PARTNER_EXPENSES.map((p) => `${p.category}:${p.agorot}`)).size).toBe(20)
+  })
+
+  it('never repeats a category twice in a row (also across the wrap) and uses every category', () => {
+    PARTNER_EXPENSES.forEach((p, i) => {
+      expect(p.category).not.toBe(PARTNER_EXPENSES[(i + 1) % PARTNER_EXPENSES.length].category)
+      expect(Number.isInteger(p.agorot) && p.agorot > 0 && p.agorot <= LIMITS.maxAmountAgorot).toBe(true)
+    })
+    expect(new Set(PARTNER_EXPENSES.map((p) => p.category))).toEqual(new Set(CATEGORY_IDS))
   })
 })
 

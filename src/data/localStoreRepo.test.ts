@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildDemoSeed, DEMO } from './demoSeed.ts'
+import { buildDemoSeed, DEMO, PARTNER_EXPENSES } from './demoSeed.ts'
 import { LocalStoreRepo } from './localStoreRepo.ts'
 import { RepoError } from './repo.ts'
 
@@ -211,5 +211,60 @@ describe('LocalStoreRepo with the demo seed (DemoRepo)', () => {
     expect((await repo.listExpenses(range))[0].id).toBe('new')
     await repo.resetDevice()
     expect(await repo.listExpenses(range)).toEqual(seeded)
+  })
+
+  it('keeps changes through reloads the same day, and starts from a new seed the next day', async () => {
+    const storage = new MemoryStorage()
+    const range = { from: '2026-09-10', toExclusive: '2026-10-10' }
+    const first = new LocalStoreRepo({ key: 'demo', storage, clock, seed: buildDemoSeed })
+    await first.addExpense({ id: 'mine', amountAgorot: 4500, category: 'groceries', spentOn: TODAY, logDurationMs: 2000 })
+
+    // A reload later the same day (a new repo on the same storage) keeps the expense.
+    const evening = () => new Date('2026-10-04T20:00:00Z') // 23:00 in Israel
+    const sameDay = new LocalStoreRepo({ key: 'demo', storage, clock: evening, seed: buildDemoSeed })
+    expect((await sameDay.listExpenses(range)).some((e) => e.id === 'mine')).toBe(true)
+
+    // The next morning the demo is today's seed: the new cycle has its expenses, the old one is gone.
+    const nextWeek = () => new Date('2026-10-11T07:00:00Z')
+    const later = new LocalStoreRepo({ key: 'demo', storage, clock: nextWeek, seed: buildDemoSeed })
+    const now = await later.listExpenses({ from: '2026-10-10', toExclusive: '2026-11-10' })
+    expect(now.length).toBeGreaterThan(0)
+    expect((await later.listExpenses(range)).some((e) => e.id === 'mine')).toBe(false)
+    expect(JSON.parse(storage.getItem('demo')!).seededOn).toBe('2026-10-11')
+  })
+
+  it('replaces a demo saved before seeds were dated', async () => {
+    const storage = new MemoryStorage()
+    const old = buildDemoSeed(TODAY, clock())
+    delete old.seededOn
+    old.expenses = []
+    storage.setItem('demo', JSON.stringify(old))
+    const repo = new LocalStoreRepo({ key: 'demo', storage, clock, seed: buildDemoSeed })
+    expect((await repo.listExpenses({ from: '2026-09-10', toExclusive: '2026-10-10' })).length).toBeGreaterThan(20)
+  })
+
+  it('never resets a store without a seed (the real app on this device)', async () => {
+    const { storage, repo } = await withHousehold()
+    await repo.addExpense({ id: 'keep', amountAgorot: 4500, category: 'groceries', spentOn: TODAY, logDurationMs: 2000 })
+    const nextWeek = () => new Date('2026-10-11T07:00:00Z')
+    const later = new LocalStoreRepo({ key: 'test', storage, clock: nextWeek })
+    expect((await later.listExpenses({ from: '2026-09-10', toExclusive: '2026-10-10' })).map((e) => e.id)).toEqual(['keep'])
+  })
+
+  it('simulates a different partner expense each time, dated today, in order and then again', async () => {
+    const storage = new MemoryStorage()
+    const repo = new LocalStoreRepo({ key: 'demo', storage, clock, seed: buildDemoSeed })
+    const today = { from: TODAY, toExclusive: '2026-10-05' }
+    const added = async () => {
+      const ids = new Set((await repo.listExpenses(today)).map((e) => e.id))
+      await repo.simulatePartnerExpense()
+      return (await repo.listExpenses(today)).filter((e) => !ids.has(e.id))
+    }
+    for (let i = 0; i < PARTNER_EXPENSES.length + 1; i++) {
+      const [e, ...more] = await added()
+      expect(more).toEqual([])
+      const want = PARTNER_EXPENSES[i % PARTNER_EXPENSES.length]
+      expect([e.category, e.amountAgorot, e.memberId, e.spentOn]).toEqual([want.category, want.agorot, DEMO.danId, TODAY])
+    }
   })
 })

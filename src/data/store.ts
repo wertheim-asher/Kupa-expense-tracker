@@ -1,9 +1,11 @@
 // Shape of everything a local repo keeps in one localStorage entry.
 
-import type { AppEvent, Expense, Household, Member, Session } from '../domain/types.ts'
+import type { AppEvent, Expense, Household, IsoDate, Member, Session } from '../domain/types.ts'
 
 export interface StoreData {
   version: 1
+  /** A seeded store (the demo): the day the seed was built. It starts again the next day. */
+  seededOn?: IsoDate
   session: Session | null
   household: Household | null
   members: Member[]

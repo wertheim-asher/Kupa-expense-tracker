@@ -1,5 +1,6 @@
 // A Repo kept entirely in one localStorage entry. LocalRepo (the real app in the
-// fast lane) starts empty; DemoRepo starts from the demo seed. No network needed.
+// fast lane) starts empty; DemoRepo starts from the demo seed, and from a new seed each day,
+// so the demo always shows today's cycle. No network needed.
 
 import { todayInIsrael } from '../domain/cycle.ts'
 import type {
@@ -17,6 +18,7 @@ import type {
   NewExpense,
   Session,
 } from '../domain/types.ts'
+import { PARTNER_EXPENSES, PARTNER_ID_PREFIX } from './demoSeed.ts'
 import { RepoError, type Repo } from './repo.ts'
 import { emptyStore, isStoreData, type StoreData } from './store.ts'
 import { inviteCode, uuid } from './uuid.ts'
@@ -25,7 +27,7 @@ import { checkAmount, checkCycleDay, checkNewExpense, checkPatch, cleanName } fr
 export interface LocalStoreOptions {
   /** localStorage key. */
   key: string
-  /** Builds the starting data. Without it the store starts empty. */
+  /** Builds the starting data, again each new day. Without it the store starts empty. */
   seed?: (today: IsoDate, now: Date) => StoreData
   clock?: () => Date
   storage?: Storage | null
@@ -73,7 +75,9 @@ export class LocalStoreRepo implements Repo {
     } catch {
       stored = null
     }
-    if (isStoreData(stored)) {
+    // A seed from an earlier day (or from before seeds were dated) is replaced on the next launch;
+    // within a day, reloads keep every change.
+    if (isStoreData(stored) && (!this.seed || stored.seededOn === this.today())) {
       this.data = stored
     } else {
       this.data = this.seed ? this.seed(this.today(), this.clock()) : emptyStore()
@@ -281,13 +285,16 @@ export class LocalStoreRepo implements Repo {
       const { session, household } = this.requireSession(d)
       const partner = d.members.find((m) => m.householdId === household.id && m.id !== session.memberId)
       if (!partner) throw new RepoError('not_found')
+      // The next one from the list, so each tap brings a different expense.
+      const n = d.expenses.filter((e) => e.id.startsWith(PARTNER_ID_PREFIX)).length
+      const next = PARTNER_EXPENSES[n % PARTNER_EXPENSES.length]
       const now = this.nowIso()
       d.expenses.push({
-        id: uuid(),
+        id: `${PARTNER_ID_PREFIX}${n + 1}`,
         householdId: household.id,
         memberId: partner.id,
-        amountAgorot: 8400,
-        category: 'groceries',
+        amountAgorot: next.agorot,
+        category: next.category,
         spentOn: this.today(),
         logDurationMs: null,
         createdAt: now,

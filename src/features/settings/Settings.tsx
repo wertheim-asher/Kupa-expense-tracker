@@ -277,8 +277,10 @@ export function Settings() {
                   variant="secondary"
                   className="justify-start"
                   onClick={() => {
-                    // Home first, so the partner's expense is seen arriving (SPEC: after 3 seconds).
+                    // Home first, on the current cycle, so the partner's expense is seen arriving
+                    // (SPEC: after 3 seconds).
                     toast.show({ message: t('settings.simulatePartnerSoon'), durationMs: 3000 })
+                    if (data.viewOffset !== 0) data.viewCycle(0)
                     navigate('/', { replace: true })
                     window.scrollTo({ top: 0 })
                     setTimeout(() => void repo.simulatePartnerExpense?.().catch(() => undefined), 3000)
