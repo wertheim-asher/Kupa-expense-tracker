@@ -145,7 +145,8 @@ function AddSheetBody({ startedAt }: { startedAt: number }) {
     <Sheet title={t('add.title')} titleId="add-title" onClose={close}>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
         {/* Reads top to bottom in the order things are decided: when, how much, what (tapping a category saves). */}
-        <div className="pt-1">
+        {/* Room above for the chips' focus ring (5 px), which the scrolling area would clip. */}
+        <div className="pt-2">
           <DateChips
             value={day}
             onChange={(next) => {
