@@ -30,6 +30,10 @@ For partner sync locally, put the two values from [SETUP.md](SETUP.md) in `.env.
 
 Other scripts: `npm test` (unit and flow tests, always on-device), `npm run test:e2e` (the phone smoke test, below), `npm run test:rls` (security checks against the real Supabase project), `npm run build` (typecheck and production build), `npm run icons` (regenerate PWA icons).
 
+### Checks in a phone-sized browser (`scripts/checks/`)
+
+Four Playwright scripts for what the unit tests cannot see; each file's header says how to build, serve and run it. `launch-cache.cjs` (opening on cached data: seat taken back, early save, new cycle, offline) and `new-visitor.cjs` (English first screens, join, the way back, the switch to Hebrew, the manifest) run against a fake Supabase; `demo-day.cjs` (the demo on Oct 18: cycles, history, the partner button) and `taps.cjs` (tap-to-paint times on a 4x slower CPU) use the demo.
+
 ### Phone smoke test
 
 `npm run test:e2e` builds the app, opens it on an iPhone 13 screen (in Chromium) and goes through the core flow in demo mode: add ₪45, undo, edit a category, switch to Hebrew (SPEC section 14, in English since English became the default). The first time on a computer, install its browser once: `npx playwright install chromium`. On GitHub it runs on every pull request, together with the type check and the unit tests (`.github/workflows/tests.yml`); merge only when it is green.

@@ -27,6 +27,11 @@ function compileHints(): Plugin {
     name: 'kupa-compile-hints',
     apply: 'build',
     enforce: 'post',
+    // The comment is added after file names are hashed: count it in the entry's hash, so the deploy that
+    // adds it (or a later one that removes it) gives the file a new name and installed apps fetch it again.
+    augmentChunkHash(chunk) {
+      if (chunk.isEntry) return 'compile-hints:allFunctionsCalledOnLoad'
+    },
     generateBundle: {
       order: 'post',
       handler(_options, bundle) {
