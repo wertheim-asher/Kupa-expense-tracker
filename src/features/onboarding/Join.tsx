@@ -82,6 +82,11 @@ function Join({ onJoined }: { onJoined: () => void }) {
   const nameRef = useRef<HTMLInputElement>(null)
   const personalRef = useRef<HTMLInputElement>(null)
 
+  // On a first visit the shared backend's code is not loaded yet: fetch it while the form is filled in.
+  useEffect(() => {
+    repo.prepare?.()
+  }, [repo])
+
   // Once read, the code leaves the address bar and this history entry.
   useEffect(() => {
     if (fromReturnLink && window.location.hash) window.history.replaceState(window.history.state, '', window.location.pathname)

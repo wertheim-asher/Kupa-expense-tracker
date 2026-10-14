@@ -44,6 +44,8 @@ export interface Repo {
    * after reads for it had started); the caller then loads again. True otherwise.
    */
   seatConfirmed?(): Promise<boolean>
+  /** Starts loading what creating or joining needs (shared backend only), so the tap that does it waits less. */
+  prepare?(): void
   /** Demo only: the partner logs the next of 20 expenses, arriving like a partner's expense does with sync. */
   simulatePartnerExpense?(): Promise<void>
   getHousehold(): Promise<Household>

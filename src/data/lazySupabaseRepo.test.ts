@@ -50,6 +50,13 @@ describe('LazySupabaseRepo', () => {
     outbox.save([])
   })
 
+  it('prepare() starts loading quietly: a failure is not thrown, and the next call tries again', async () => {
+    const repo = new LazySupabaseRepo()
+    expect(() => repo.prepare()).not.toThrow()
+    await Promise.resolve()
+    await expect(repo.createHousehold({ displayName: 'Noa', budgetAgorot: 900000, cycleStartDay: 10 })).rejects.toMatchObject({ code: 'network' })
+  })
+
   it('with a cached household it loads the library too, so an offline launch still opens', async () => {
     offlineCache.update({ session: { householdId: 'h1', memberId: 'm1' } })
     await expect(new LazySupabaseRepo().getSession()).rejects.toMatchObject({ code: 'network' })
