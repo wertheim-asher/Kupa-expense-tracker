@@ -99,29 +99,34 @@ export class LocalStoreRepo implements Repo {
     this.storage?.setItem(this.key, JSON.stringify(next))
   }
 
-  /** What is in storage right now; another tab may have written since the cache was filled. */
-  private fresh(): StoreData {
+  /** What is in storage right now (another tab may have written since the cache was filled), or null. */
+  private stored(): StoreData | null {
     try {
       const raw = this.storage?.getItem(this.key)
       const stored: unknown = raw ? JSON.parse(raw) : null
-      if (isStoreData(stored)) {
-        this.data = stored
-        return stored
-      }
+      return isStoreData(stored) ? stored : null
     } catch {
-      // Fall back to the cache below.
+      return null
     }
-    return this.load()
   }
 
   /** Applies a change to a fresh copy, persists it, and only then makes it current. */
   private mutate<T>(change: (draft: StoreData) => T): T {
-    const draft = structuredClone(this.fresh())
-    const result = change(draft)
+    const stored = this.stored()
+    // Just read from storage, it is a new object already: no second copy (about 5 ms per write on a slow phone).
+    const draft = stored ?? structuredClone(this.load())
+    let result: T
     try {
-      this.write(draft)
+      result = change(draft)
+      try {
+        this.write(draft)
+      } catch (error) {
+        throw new RepoError('storage_failed', error instanceof Error ? error.message : undefined)
+      }
     } catch (error) {
-      throw new RepoError('storage_failed', error instanceof Error ? error.message : undefined)
+      // Not changed: the next read takes what storage holds, which may be newer than the cache.
+      if (stored) this.data = null
+      throw error
     }
     this.data = draft
     return result

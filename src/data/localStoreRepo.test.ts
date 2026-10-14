@@ -160,6 +160,15 @@ describe('LocalStoreRepo (LocalRepo)', () => {
     expect(ids.sort()).toEqual(['from-a', 'from-b'])
   })
 
+  it("a change that fails still leaves this tab with what storage holds (another tab's expense)", async () => {
+    const { repo: tabA, storage } = await withHousehold()
+    const tabB = new LocalStoreRepo({ key: 'test', storage, clock })
+    await tabB.getSession() // B fills its cache now, before A writes
+    await tabA.addExpense({ id: 'from-a', amountAgorot: 100, category: 'fun', spentOn: TODAY, logDurationMs: null })
+    await expectCode(tabB.updateExpense('missing', { amountAgorot: 100 }), 'not_found')
+    expect((await tabB.listExpenses({ from: '2026-09-10', toExclusive: '2026-10-10' })).map((e) => e.id)).toEqual(['from-a'])
+  })
+
   it('a failed write rejects and leaves the data unchanged', async () => {
     const { repo, storage } = await withHousehold()
     storage.failWrites = true
