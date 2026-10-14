@@ -1,8 +1,9 @@
 // A Repo kept entirely in one localStorage entry. LocalRepo (the real app in the
-// fast lane) starts empty; DemoRepo starts from the demo seed, and from a new seed each day,
-// so the demo always shows today's cycle. No network needed.
+// fast lane) starts empty; DemoRepo starts from the demo seed, and from a new seed each day (so the
+// demo always shows today's cycle) and after a language switch (so the names match). No network needed.
 
 import { todayInIsrael } from '../domain/cycle.ts'
+import { LANG, type Lang } from '../i18n/lang.ts'
 import type {
   CreateInput,
   CreateResult,
@@ -28,7 +29,9 @@ export interface LocalStoreOptions {
   /** localStorage key. */
   key: string
   /** Builds the starting data, again each new day. Without it the store starts empty. */
-  seed?: (today: IsoDate, now: Date) => StoreData
+  seed?: (today: IsoDate, now: Date, lang: Lang) => StoreData
+  /** The language a seed is built in (the app's language unless a test says otherwise). */
+  lang?: Lang
   clock?: () => Date
   storage?: Storage | null
 }
@@ -45,13 +48,15 @@ export class LocalStoreRepo implements Repo {
   private data: StoreData | null = null
   private readonly listeners = new Set<() => void>()
   private readonly key: string
-  private readonly seed?: (today: IsoDate, now: Date) => StoreData
+  private readonly seed?: (today: IsoDate, now: Date, lang: Lang) => StoreData
+  private readonly lang: Lang
   private readonly clock: () => Date
   private readonly storage: Storage | null
 
   constructor(options: LocalStoreOptions) {
     this.key = options.key
     this.seed = options.seed
+    this.lang = options.lang ?? LANG
     this.clock = options.clock ?? (() => new Date())
     this.storage = options.storage === undefined ? defaultStorage() : options.storage
   }
@@ -75,12 +80,12 @@ export class LocalStoreRepo implements Repo {
     } catch {
       stored = null
     }
-    // A seed from an earlier day (or from before seeds were dated) is replaced on the next launch;
-    // within a day, reloads keep every change.
-    if (isStoreData(stored) && (!this.seed || stored.seededOn === this.today())) {
+    // A seed from an earlier day, in the other language, or from before seeds were dated is replaced
+    // on the next launch; within a day, reloads keep every change.
+    if (isStoreData(stored) && (!this.seed || (stored.seededOn === this.today() && stored.seededLang === this.lang))) {
       this.data = stored
     } else {
-      this.data = this.seed ? this.seed(this.today(), this.clock()) : emptyStore()
+      this.data = this.seed ? this.seed(this.today(), this.clock(), this.lang) : emptyStore()
       try {
         this.write(this.data)
       } catch {

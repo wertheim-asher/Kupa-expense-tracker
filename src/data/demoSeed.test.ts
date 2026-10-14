@@ -49,6 +49,13 @@ describe('buildDemoSeed', () => {
     expect(seed.session?.memberId).toBe(DEMO.noaId)
   })
 
+  it('names Noa and Dan in the language it is built in', () => {
+    const seed = buildDemoSeed('2026-10-18', NOW('2026-10-18'), 'en')
+    expect(seed.members.map((m) => m.displayName)).toEqual(['Noa', 'Dan'])
+    expect(seed.seededLang).toBe('en')
+    expect(buildDemoSeed('2026-10-18', NOW('2026-10-18'), 'he').seededLang).toBe('he')
+  })
+
   it('on presentation day has about 28 current expenses about 8% ahead of pace', () => {
     const { cur, curTotal, current } = split('2026-10-04')
     expect(cur.length).toBeGreaterThanOrEqual(24)

@@ -214,7 +214,7 @@ export function Settings() {
 
         <Card title={t('settings.language')}>
           <div className="flex gap-2 p-4">
-            {(['he', 'en'] as const satisfies readonly Lang[]).map((lang) => (
+            {(['en', 'he'] as const satisfies readonly Lang[]).map((lang) => (
               <button
                 key={lang}
                 type="button"

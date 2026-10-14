@@ -9,6 +9,7 @@ export const APP = {
   slug: 'kupa',
   version: '0.1.0',
   description: 'תמיד יודעים כמה נשאר עד החיוב הבא',
+  descriptionEn: "Always know what's left until the next card bill",
   owner: 'אשר וורטהיים',
   ownerEn: 'Asher Wertheim',
   copyrightYear: 2026,

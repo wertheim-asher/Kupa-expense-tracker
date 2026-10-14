@@ -53,11 +53,12 @@ export default defineConfig(({ mode }) => ({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       manifest: {
-        name: APP.name,
-        short_name: APP.name,
-        description: APP.description,
-        lang: 'he',
-        dir: 'rtl',
+        // English is the default language, so the installed app is named in English too.
+        name: APP.nameEn,
+        short_name: APP.nameEn,
+        description: APP.descriptionEn,
+        lang: 'en',
+        dir: 'ltr',
         start_url: '/',
         scope: '/',
         display: 'standalone',

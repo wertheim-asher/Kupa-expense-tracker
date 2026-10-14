@@ -1,9 +1,10 @@
 // Demo data (SPEC section 12), generated relative to today and deterministic:
 // the same `today` always gives the same household, expenses and totals.
-// The demo starts again from a new seed each day (LocalStoreRepo), so it always shows today's cycle.
+// The demo starts again from a new seed each day (LocalStoreRepo), so it always shows today's cycle,
+// and after a language switch, so the names match the language.
 
 import { TIME_ZONE } from '../config.ts'
-import { LANG } from '../i18n/lang.ts'
+import { LANG, type Lang } from '../i18n/lang.ts'
 import type { CategoryId } from '../domain/categories.ts'
 import { addDays, cycleFor, diffDays, shiftCycle, type Cycle } from '../domain/cycle.ts'
 import type { Expense, Household, IsoDate, Member } from '../domain/types.ts'
@@ -233,7 +234,7 @@ export function currentTargetAgorot(today: IsoDate, cycle: Cycle): number {
   return Math.round((DEMO.budgetAgorot * share) / 100) * 100
 }
 
-export function buildDemoSeed(today: IsoDate, now: Date): StoreData {
+export function buildDemoSeed(today: IsoDate, now: Date, lang: Lang = LANG): StoreData {
   const rand = mulberry32(42)
   const current = cycleFor(today, DEMO.cycleStartDay)
   const firstDay = today === current.start
@@ -279,13 +280,14 @@ export function buildDemoSeed(today: IsoDate, now: Date): StoreData {
     updatedAt: createdAt,
   }
   const members: Member[] = [
-    { id: DEMO.noaId, householdId: DEMO.householdId, displayName: LANG === 'en' ? 'Noa' : 'נועה', color: 'teal', createdAt },
-    { id: DEMO.danId, householdId: DEMO.householdId, displayName: LANG === 'en' ? 'Dan' : 'דן', color: 'violet', createdAt },
+    { id: DEMO.noaId, householdId: DEMO.householdId, displayName: lang === 'en' ? 'Noa' : 'נועה', color: 'teal', createdAt },
+    { id: DEMO.danId, householdId: DEMO.householdId, displayName: lang === 'en' ? 'Dan' : 'דן', color: 'violet', createdAt },
   ]
 
   return {
     version: 1,
     seededOn: today,
+    seededLang: lang,
     session: { householdId: DEMO.householdId, memberId: DEMO.noaId },
     household,
     members,

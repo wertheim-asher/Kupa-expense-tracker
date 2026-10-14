@@ -233,6 +233,22 @@ describe('LocalStoreRepo with the demo seed (DemoRepo)', () => {
     expect(JSON.parse(storage.getItem('demo')!).seededOn).toBe('2026-10-11')
   })
 
+  it('starts again after a language switch, so the names match the language', async () => {
+    const storage = new MemoryStorage()
+    const hebrew = new LocalStoreRepo({ key: 'demo', storage, clock, seed: buildDemoSeed, lang: 'he' })
+    expect((await hebrew.getMembers()).map((m) => m.displayName)).toEqual(['נועה', 'דן'])
+    await hebrew.addExpense({ id: 'mine', amountAgorot: 4500, category: 'groceries', spentOn: TODAY, logDurationMs: 2000 })
+
+    // Same language later the same day: kept.
+    const again = new LocalStoreRepo({ key: 'demo', storage, clock, seed: buildDemoSeed, lang: 'he' })
+    expect((await again.listExpenses({ from: TODAY, toExclusive: '2026-10-05' })).some((e) => e.id === 'mine')).toBe(true)
+
+    // English: a new seed with English names.
+    const english = new LocalStoreRepo({ key: 'demo', storage, clock, seed: buildDemoSeed, lang: 'en' })
+    expect((await english.getMembers()).map((m) => m.displayName)).toEqual(['Noa', 'Dan'])
+    expect((await english.listExpenses({ from: TODAY, toExclusive: '2026-10-05' })).some((e) => e.id === 'mine')).toBe(false)
+  })
+
   it('replaces a demo saved before seeds were dated', async () => {
     const storage = new MemoryStorage()
     const old = buildDemoSeed(TODAY, clock())

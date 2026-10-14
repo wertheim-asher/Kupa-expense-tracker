@@ -6,7 +6,7 @@ A shared budget app for couples, built as a Product Management course MVP. Both 
 - **Code:** https://github.com/wertheim-asher/Kupa-expense-tracker (private)
 - **Demo:** add `?demo=1` to the URL (or tap "צפייה בדמו" on the welcome screen). `?demo=0` or "יציאה מהדמו" in settings returns to the real app. The demo always runs on the phone only, so it works without internet.
 
-Partner sync (Supabase) is live since October 2, 2026. Hebrew is the default; English and dark mode are in too (Settings, and the phone's dark setting). See [SPEC.md](SPEC.md) for the plan, [BUILD_LOG.md](BUILD_LOG.md) for every decision, problem and cut, and [pilot/](pilot/README.md) for the pilot with real couples.
+Partner sync (Supabase) is live since October 2, 2026. English is the default (since October 14, 2026); Hebrew and dark mode are in too (Settings, and the phone's dark setting). See [SPEC.md](SPEC.md) for the plan, [BUILD_LOG.md](BUILD_LOG.md) for every decision, problem and cut, and [pilot/](pilot/README.md) for the pilot with real couples.
 
 ## How it works
 
@@ -32,7 +32,7 @@ Other scripts: `npm test` (unit and flow tests, always on-device), `npm run test
 
 ### Phone smoke test
 
-`npm run test:e2e` builds the app, opens it on an iPhone 13 screen (in Chromium) and goes through the core flow in demo mode: add ₪45, undo, edit a category, switch to English (SPEC section 14). The first time on a computer, install its browser once: `npx playwright install chromium`. On GitHub it runs on every pull request, together with the type check and the unit tests (`.github/workflows/tests.yml`); merge only when it is green.
+`npm run test:e2e` builds the app, opens it on an iPhone 13 screen (in Chromium) and goes through the core flow in demo mode: add ₪45, undo, edit a category, switch to Hebrew (SPEC section 14, in English since English became the default). The first time on a computer, install its browser once: `npx playwright install chromium`. On GitHub it runs on every pull request, together with the type check and the unit tests (`.github/workflows/tests.yml`); merge only when it is green.
 
 ## Deploy
 
@@ -59,7 +59,7 @@ Database changes live in `supabase/migrations/`, run in order in the Supabase SQ
 - [ ] Settings: change the cycle start day, home recalculates right away. Download both CSV files and open them in Excel (Hebrew shows correctly).
 - [ ] Demo: `?demo=1` shows Noa and Dan's seeded cycle; "איפוס הדמו" restores it.
 - [ ] History: the arrow next to the cycle dates shows the previous cycle; edit an expense there; "חזרה למחזור הנוכחי" returns.
-- [ ] English: Settings → English. The app turns left to right; "עברית" switches back.
+- [ ] Language: the app opens in English. Settings → עברית turns it right to left; "English" switches back.
 - [ ] Dark mode: turn on the phone's dark mode; every screen stays readable.
 
 ## Known limitations
