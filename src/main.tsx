@@ -5,6 +5,7 @@ import '@fontsource/rubik/500.css'
 import '@fontsource/rubik/700.css'
 import './index.css'
 import { App } from './app/App.tsx'
+import { reloadOnStaleCode } from './app/staleCode.ts'
 import { initialMode } from './data/mode.ts'
 import { appName, DIR, LANG } from './i18n/index.ts'
 import { applyTheme, followSystemTheme } from './ui/theme.ts'
@@ -17,6 +18,7 @@ document.title = appName()
 document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute('content', appName())
 applyTheme()
 followSystemTheme()
+reloadOnStaleCode()
 
 // Read ?demo=1 / ?demo=0 before the router sees the URL.
 const mode = initialMode()
