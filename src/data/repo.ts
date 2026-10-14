@@ -37,14 +37,16 @@ export interface Repo {
   peekHousehold?(): Household | null
   /** This member's personal code as last seen on this device (undefined: not known here). */
   peekPersonalCode?(): string | null | undefined
-  /** The home this device showed last time for the cycle `rangeFor` gives, or null (shared backend only). */
+  /** The home for the cycle `rangeFor` gives, read without waiting (on-device data, or the shared backend's last home), or null. */
   peekCached?(rangeFor: (household: Household) => { from: string; toExclusive: string }): CachedHome | null
   /**
    * False, once, when the seat used at open turned out to be taken back or moved (the server said so
    * after reads for it had started); the caller then loads again. True otherwise.
    */
   seatConfirmed?(): Promise<boolean>
-  /** Demo only: the partner logs ₪84 groceries, arriving like a partner's expense does with sync. */
+  /** Starts loading what creating or joining needs (shared backend only), so the tap that does it waits less. */
+  prepare?(): void
+  /** Demo only: the partner logs the next of 20 expenses, arriving like a partner's expense does with sync. */
   simulatePartnerExpense?(): Promise<void>
   getHousehold(): Promise<Household>
   getMembers(): Promise<Member[]>

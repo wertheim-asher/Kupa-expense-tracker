@@ -17,6 +17,33 @@ function preconnect(url: string | undefined): Plugin {
 }
 
 /**
+ * Asks V8 (Chrome, Android) to compile the whole entry script up front on a background thread, so the
+ * first render does not stop to compile each function as it first runs (home about 70 to 135 ms sooner
+ * on a slow phone). Safari and Firefox ignore the comment. It must be the file's first line, so this
+ * runs after Vite has added its own first line.
+ */
+function compileHints(): Plugin {
+  return {
+    name: 'kupa-compile-hints',
+    apply: 'build',
+    enforce: 'post',
+    // The comment is added after file names are hashed: count it in the entry's hash, so the deploy that
+    // adds it (or a later one that removes it) gives the file a new name and installed apps fetch it again.
+    augmentChunkHash(chunk) {
+      if (chunk.isEntry) return 'compile-hints:allFunctionsCalledOnLoad'
+    },
+    generateBundle: {
+      order: 'post',
+      handler(_options, bundle) {
+        for (const chunk of Object.values(bundle)) {
+          if (chunk.type === 'chunk' && chunk.isEntry) chunk.code = `//# allFunctionsCalledOnLoad\n${chunk.code}`
+        }
+      },
+    },
+  }
+}
+
+/**
  * When the service worker serves the page (every launch after the first), the fonts home uses are in
  * its cache: ask for them at once, so home paints in Rubik and is not laid out again when they arrive.
  * Not on a first visit, where they would compete with the app's code on a slow connection.
@@ -47,17 +74,19 @@ export default defineConfig(({ mode }) => ({
     react(),
     tailwindcss(),
     preconnect(loadEnv(mode, '.', 'VITE_').VITE_SUPABASE_URL),
+    compileHints(),
     // The faces home draws with: Hebrew and Latin, regular, medium and bold (₪ comes from Hebrew).
     preloadCachedFonts(/rubik-(hebrew|latin)-(400|500|700)-normal-[\w-]+\.woff2$/),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       manifest: {
-        name: APP.name,
-        short_name: APP.name,
-        description: APP.description,
-        lang: 'he',
-        dir: 'rtl',
+        // English is the default language, so the installed app is named in English too.
+        name: APP.nameEn,
+        short_name: APP.nameEn,
+        description: APP.descriptionEn,
+        lang: 'en',
+        dir: 'ltr',
         start_url: '/',
         scope: '/',
         display: 'standalone',

@@ -93,6 +93,11 @@ export class LazySupabaseRepo implements Repo {
     return { session, household, members, expenses: [...shown, ...waiting].sort(byNewest) }
   }
 
+  /** The create and join forms open: load the library while the person types, not after the tap. */
+  prepare(): void {
+    void this.load().catch(() => undefined)
+  }
+
   async createHousehold(input: CreateInput) {
     return (await this.load()).createHousehold(input)
   }

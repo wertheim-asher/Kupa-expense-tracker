@@ -214,7 +214,7 @@ export function Settings() {
 
         <Card title={t('settings.language')}>
           <div className="flex gap-2 p-4">
-            {(['he', 'en'] as const satisfies readonly Lang[]).map((lang) => (
+            {(['en', 'he'] as const satisfies readonly Lang[]).map((lang) => (
               <button
                 key={lang}
                 type="button"
@@ -277,8 +277,10 @@ export function Settings() {
                   variant="secondary"
                   className="justify-start"
                   onClick={() => {
-                    // Home first, so the partner's expense is seen arriving (SPEC: after 3 seconds).
+                    // Home first, on the current cycle, so the partner's expense is seen arriving
+                    // (SPEC: after 3 seconds).
                     toast.show({ message: t('settings.simulatePartnerSoon'), durationMs: 3000 })
+                    if (data.viewOffset !== 0) data.viewCycle(0)
                     navigate('/', { replace: true })
                     window.scrollTo({ top: 0 })
                     setTimeout(() => void repo.simulatePartnerExpense?.().catch(() => undefined), 3000)

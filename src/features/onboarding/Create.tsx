@@ -1,5 +1,5 @@
 import { ChevronLeft } from 'lucide-react'
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { useData } from '../../app/DataProvider.tsx'
 import { useBack } from '../../app/useBack.ts'
@@ -29,6 +29,11 @@ export function Create() {
   const [failed, setFailed] = useState(false)
   const nameRef = useRef<HTMLInputElement>(null)
   const budgetRef = useRef<HTMLInputElement>(null)
+
+  // On a first visit the shared backend's code is not loaded yet: fetch it while the form is filled in.
+  useEffect(() => {
+    repo.prepare?.()
+  }, [repo])
 
   const nameOk = name.trim().length >= 1 && name.trim().length <= LIMITS.maxNameLength
   const budgetAgorot = parseAmount(normalizeTypedAmount(budget))

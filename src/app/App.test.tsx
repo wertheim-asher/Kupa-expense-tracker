@@ -270,6 +270,17 @@ describe('core flow (LocalRepo)', () => {
   })
 })
 
+describe('opening the demo', () => {
+  it('paints home in the first frame, with no loading skeleton', async () => {
+    await repoFor('demo').resetDevice()
+    render(<App initialMode="demo" />)
+    // No waiting: the data is on this device, so home is there on the first render.
+    expect(screen.getByRole('button', { name: 'הוספת הוצאה' })).toBeInTheDocument()
+    expect(bigNumber()).toMatch(/במחזור הזה|חריגה/)
+    expect(screen.getAllByRole('link').some((a) => a.getAttribute('href')?.startsWith('/expense/'))).toBe(true)
+  })
+})
+
 describe('history (earlier cycles)', () => {
   it('shows the previous cycle, edits an expense there, and comes back to the current one', async () => {
     await repoFor('demo').resetDevice()
@@ -325,4 +336,25 @@ describe('demo: simulate a partner expense', () => {
     )
     expect(added).toBeDefined()
   }, 10_000)
+
+  it('from an earlier cycle: shows the current cycle, and the next tap brings a different expense', async () => {
+    await repoFor('demo').resetDevice()
+    const user = userEvent.setup()
+    render(<App initialMode="demo" />)
+    await screen.findByRole('button', { name: 'הוספת הוצאה' })
+    const current = cycleFor(todayInIsrael(), DEMO.cycleStartDay)
+    const shekels = () => Number(bigNumber().replace(/[^\d]/g, ''))
+    const before = shekels()
+
+    // Looking at an earlier cycle when the partner's expense is asked for.
+    await user.click(screen.getByRole('button', { name: 'המחזור הקודם' }))
+    await screen.findByRole('button', { name: 'חזרה למחזור הנוכחי' })
+    for (const [i, amount] of [84, 126].entries()) {
+      await user.click(screen.getByRole('link', { name: 'הגדרות' }))
+      await user.click(await screen.findByRole('button', { name: 'הדמיה: הוצאה של בן או בת הזוג' }))
+      await screen.findByRole('button', { name: 'הוספת הוצאה' })
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(cycleLabel(current))
+      await waitFor(() => expect(shekels()).toBe(before - (i === 0 ? 84 : 84 + amount)), { timeout: 5000 })
+    }
+  }, 15_000)
 })

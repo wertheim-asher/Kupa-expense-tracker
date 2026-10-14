@@ -138,7 +138,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const { mode, repo } = useMode()
   const [snapshot, setSnapshot] = useState<Snapshot>(() => {
     const today = todayInIsrael()
-    // A device with a shared budget opens on what it showed last time; the first load refreshes it.
+    // Open on what this device has (on-device data, or a shared budget's last home); the first load refreshes it.
     const cached = repo.peekCached?.((h) => {
       const c = cycleFor(today, h.cycleStartDay)
       return { from: c.start, toExclusive: c.endExclusive }

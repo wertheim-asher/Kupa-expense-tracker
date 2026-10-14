@@ -1,8 +1,10 @@
 // Demo data (SPEC section 12), generated relative to today and deterministic:
 // the same `today` always gives the same household, expenses and totals.
+// The demo starts again from a new seed each day (LocalStoreRepo), so it always shows today's cycle,
+// and after a language switch, so the names match the language.
 
 import { TIME_ZONE } from '../config.ts'
-import { LANG } from '../i18n/lang.ts'
+import { LANG, type Lang } from '../i18n/lang.ts'
 import type { CategoryId } from '../domain/categories.ts'
 import { addDays, cycleFor, diffDays, shiftCycle, type Cycle } from '../domain/cycle.ts'
 import type { Expense, Household, IsoDate, Member } from '../domain/types.ts'
@@ -23,6 +25,55 @@ export const DEMO = {
   previousShare: 0.97,
   previousCount: 30,
 } as const
+
+/**
+ * Earlier cycles with expenses, most recent first: share of the budget spent, how many expenses,
+ * and the generator seed (picked so no amount sits at its category's limit and none repeats,
+ * which would look made up). The first is the previous cycle (SPEC: about 30, slightly under
+ * budget). On the presentation day (2026-10-18) they reach back to Jan 10 - Feb 9.
+ * Some end over budget (summer, Passover), as real months do.
+ */
+export const HISTORY: ReadonlyArray<{ share: number; count: number; seed: number }> = [
+  { share: DEMO.previousShare, count: DEMO.previousCount, seed: 19 },
+  { share: 1.05, count: 34, seed: 1 },
+  { share: 0.98, count: 31, seed: 33 },
+  { share: 0.92, count: 29, seed: 3 },
+  { share: 0.94, count: 30, seed: 18 },
+  { share: 0.9, count: 28, seed: 16 },
+  { share: 1.03, count: 33, seed: 7 },
+  { share: 0.95, count: 30, seed: 5 },
+  { share: 0.99, count: 32, seed: 9 },
+]
+
+/**
+ * "Simulate partner expense" (demo): each tap adds the next one, by the partner, dated today.
+ * The first is the SPEC's ₪84 groceries; after the last it starts over.
+ */
+export const PARTNER_EXPENSES: ReadonlyArray<{ category: CategoryId; agorot: number }> = [
+  { category: 'groceries', agorot: 8_400 },
+  { category: 'eating_out', agorot: 12_600 },
+  { category: 'transport', agorot: 4_800 },
+  { category: 'kids', agorot: 4_500 },
+  { category: 'home', agorot: 18_900 },
+  { category: 'health', agorot: 6_200 },
+  { category: 'fun', agorot: 9_800 },
+  { category: 'groceries', agorot: 23_700 },
+  { category: 'other', agorot: 3_500 },
+  { category: 'eating_out', agorot: 5_800 },
+  { category: 'transport', agorot: 28_000 },
+  { category: 'kids', agorot: 14_000 },
+  { category: 'groceries', agorot: 11_200 },
+  { category: 'fun', agorot: 17_500 },
+  { category: 'home', agorot: 7_400 },
+  { category: 'health', agorot: 3_900 },
+  { category: 'eating_out', agorot: 21_400 },
+  { category: 'groceries', agorot: 36_800 },
+  { category: 'other', agorot: 9_000 },
+  { category: 'transport', agorot: 3_300 },
+]
+
+/** Ids of simulated partner expenses: the prefix plus 1, 2, 3... in the order they were added. */
+export const PARTNER_ID_PREFIX = 'demo-partner-'
 
 /** mulberry32: small, fast, deterministic PRNG. */
 export function mulberry32(seed: number): () => number {
@@ -183,25 +234,19 @@ export function currentTargetAgorot(today: IsoDate, cycle: Cycle): number {
   return Math.round((DEMO.budgetAgorot * share) / 100) * 100
 }
 
-export function buildDemoSeed(today: IsoDate, now: Date): StoreData {
+export function buildDemoSeed(today: IsoDate, now: Date, lang: Lang = LANG): StoreData {
   const rand = mulberry32(42)
   const current = cycleFor(today, DEMO.cycleStartDay)
-  const previous = shiftCycle(current, DEMO.cycleStartDay, -1)
   const firstDay = today === current.start
 
   // Seeded times stay strictly in the past, so a new expense always sorts first.
-  const pastTime = (date: IsoDate) => israelTimeToIso(date, int(rand, 7, 21), int(rand, 0, 59))
+  const pastTime = (r: () => number) => (date: IsoDate) => israelTimeToIso(date, int(r, 7, 21), int(r, 0, 59))
   const earlierToday = () => {
     const midnight = Date.parse(israelTimeToIso(today, 0, 0))
     let ms = Math.max(now.getTime() - int(rand, 20, 90) * 60_000, midnight)
     if (ms >= now.getTime()) ms = now.getTime() - 1000
     return new Date(ms).toISOString()
   }
-
-  // Previous cycle: about 30 expenses, ending slightly under budget.
-  const prevDrafts = draftAmounts(DEMO.previousCount, DEMO.budgetAgorot * DEMO.previousShare, rand)
-  const prevDates = randomDates(prevDrafts.length, previous.start, previous.lastDay, rand)
-  const prevExpenses = buildExpenses(prevDrafts, prevDates, rand, 'demo-prev', pastTime)
 
   // Current cycle: dated from the start to yesterday; on the first day, 1 or 2 from earlier today.
   const target = currentTargetAgorot(today, current)
@@ -210,9 +255,22 @@ export function buildDemoSeed(today: IsoDate, now: Date): StoreData {
   const curDates = firstDay
     ? curDrafts.map(() => today)
     : randomDates(curDrafts.length, current.start, addDays(today, -1), rand)
-  const curExpenses = buildExpenses(curDrafts, curDates, rand, 'demo-cur', firstDay ? earlierToday : pastTime)
+  const curExpenses = buildExpenses(curDrafts, curDates, rand, 'demo-cur', firstDay ? earlierToday : pastTime(rand))
 
-  const createdAt = israelTimeToIso(previous.start, 9, 0)
+  // Earlier cycles, each from its own generator. The previous one keeps its old id prefix.
+  const earlier: Expense[] = []
+  let oldest = current
+  HISTORY.forEach(({ share, count: n, seed }, i) => {
+    const back = i + 1
+    const cycle = shiftCycle(current, DEMO.cycleStartDay, -back)
+    const r = mulberry32(seed)
+    const drafts = draftAmounts(n, DEMO.budgetAgorot * share, r)
+    const dates = randomDates(drafts.length, cycle.start, cycle.lastDay, r)
+    earlier.push(...buildExpenses(drafts, dates, r, back === 1 ? 'demo-prev' : `demo-h${back}`, pastTime(r)))
+    oldest = cycle
+  })
+
+  const createdAt = israelTimeToIso(oldest.start, 9, 0)
   const household: Household = {
     id: DEMO.householdId,
     budgetAgorot: DEMO.budgetAgorot,
@@ -222,16 +280,18 @@ export function buildDemoSeed(today: IsoDate, now: Date): StoreData {
     updatedAt: createdAt,
   }
   const members: Member[] = [
-    { id: DEMO.noaId, householdId: DEMO.householdId, displayName: LANG === 'en' ? 'Noa' : 'נועה', color: 'teal', createdAt },
-    { id: DEMO.danId, householdId: DEMO.householdId, displayName: LANG === 'en' ? 'Dan' : 'דן', color: 'violet', createdAt },
+    { id: DEMO.noaId, householdId: DEMO.householdId, displayName: lang === 'en' ? 'Noa' : 'נועה', color: 'teal', createdAt },
+    { id: DEMO.danId, householdId: DEMO.householdId, displayName: lang === 'en' ? 'Dan' : 'דן', color: 'violet', createdAt },
   ]
 
   return {
     version: 1,
+    seededOn: today,
+    seededLang: lang,
     session: { householdId: DEMO.householdId, memberId: DEMO.noaId },
     household,
     members,
-    expenses: [...prevExpenses, ...curExpenses],
+    expenses: [...earlier, ...curExpenses],
     events: [],
     nextEventId: 1,
   }

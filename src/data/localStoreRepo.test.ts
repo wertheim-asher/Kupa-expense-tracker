@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildDemoSeed, DEMO } from './demoSeed.ts'
+import { buildDemoSeed, DEMO, PARTNER_EXPENSES } from './demoSeed.ts'
 import { LocalStoreRepo } from './localStoreRepo.ts'
 import { RepoError } from './repo.ts'
 
@@ -160,6 +160,15 @@ describe('LocalStoreRepo (LocalRepo)', () => {
     expect(ids.sort()).toEqual(['from-a', 'from-b'])
   })
 
+  it("a change that fails still leaves this tab with what storage holds (another tab's expense)", async () => {
+    const { repo: tabA, storage } = await withHousehold()
+    const tabB = new LocalStoreRepo({ key: 'test', storage, clock })
+    await tabB.getSession() // B fills its cache now, before A writes
+    await tabA.addExpense({ id: 'from-a', amountAgorot: 100, category: 'fun', spentOn: TODAY, logDurationMs: null })
+    await expectCode(tabB.updateExpense('missing', { amountAgorot: 100 }), 'not_found')
+    expect((await tabB.listExpenses({ from: '2026-09-10', toExclusive: '2026-10-10' })).map((e) => e.id)).toEqual(['from-a'])
+  })
+
   it('a failed write rejects and leaves the data unchanged', async () => {
     const { repo, storage } = await withHousehold()
     storage.failWrites = true
@@ -193,6 +202,38 @@ describe('LocalStoreRepo (LocalRepo)', () => {
     expect(await repo.getSession()).toBeNull()
   })
 
+  it('peekCached gives at once what the first load would (null without a budget, or on any error)', async () => {
+    const { repo, storage } = setup()
+    const range = { from: '2026-09-10', toExclusive: '2026-10-10' }
+    expect(repo.peekCached(() => range)).toBeNull()
+    await repo.createHousehold({ displayName: 'נועה', budgetAgorot: 900_000, cycleStartDay: 10 })
+    await repo.addExpense({ id: 'e1', amountAgorot: 4500, category: 'groceries', spentOn: '2026-10-02', logDurationMs: 3000 })
+    await repo.addExpense({ id: 'e2', amountAgorot: 1200, category: 'fun', spentOn: '2026-09-01', logDurationMs: 3000 })
+    await repo.addExpense({ id: 'e3', amountAgorot: 99, category: 'fun', spentOn: '2026-10-03', logDurationMs: null })
+    await repo.deleteExpense('e3')
+
+    // A new repo on the same storage, as on the next launch.
+    const again = new LocalStoreRepo({ key: 'test', storage, clock })
+    let askedFor = 0
+    const home = again.peekCached((h) => {
+      askedFor = h.cycleStartDay
+      return range
+    })
+    expect(askedFor).toBe(10)
+    expect(home).toEqual({
+      session: await again.getSession(),
+      household: await again.getHousehold(),
+      members: await again.getMembers(),
+      expenses: await again.listExpenses(range),
+    })
+    expect(home?.expenses.map((e) => e.id)).toEqual(['e1'])
+    expect(
+      again.peekCached(() => {
+        throw new Error('bad range')
+      }),
+    ).toBeNull()
+  })
+
   it('joining is not available locally', async () => {
     const { repo } = setup()
     await expectCode(repo.joinHousehold('ABCDEF', 'דן'), 'unsupported')
@@ -211,5 +252,76 @@ describe('LocalStoreRepo with the demo seed (DemoRepo)', () => {
     expect((await repo.listExpenses(range))[0].id).toBe('new')
     await repo.resetDevice()
     expect(await repo.listExpenses(range)).toEqual(seeded)
+  })
+
+  it('keeps changes through reloads the same day, and starts from a new seed the next day', async () => {
+    const storage = new MemoryStorage()
+    const range = { from: '2026-09-10', toExclusive: '2026-10-10' }
+    const first = new LocalStoreRepo({ key: 'demo', storage, clock, seed: buildDemoSeed })
+    await first.addExpense({ id: 'mine', amountAgorot: 4500, category: 'groceries', spentOn: TODAY, logDurationMs: 2000 })
+
+    // A reload later the same day (a new repo on the same storage) keeps the expense.
+    const evening = () => new Date('2026-10-04T20:00:00Z') // 23:00 in Israel
+    const sameDay = new LocalStoreRepo({ key: 'demo', storage, clock: evening, seed: buildDemoSeed })
+    expect((await sameDay.listExpenses(range)).some((e) => e.id === 'mine')).toBe(true)
+
+    // The next morning the demo is today's seed: the new cycle has its expenses, the old one is gone.
+    const nextWeek = () => new Date('2026-10-11T07:00:00Z')
+    const later = new LocalStoreRepo({ key: 'demo', storage, clock: nextWeek, seed: buildDemoSeed })
+    const now = await later.listExpenses({ from: '2026-10-10', toExclusive: '2026-11-10' })
+    expect(now.length).toBeGreaterThan(0)
+    expect((await later.listExpenses(range)).some((e) => e.id === 'mine')).toBe(false)
+    expect(JSON.parse(storage.getItem('demo')!).seededOn).toBe('2026-10-11')
+  })
+
+  it('starts again after a language switch, so the names match the language', async () => {
+    const storage = new MemoryStorage()
+    const hebrew = new LocalStoreRepo({ key: 'demo', storage, clock, seed: buildDemoSeed, lang: 'he' })
+    expect((await hebrew.getMembers()).map((m) => m.displayName)).toEqual(['נועה', 'דן'])
+    await hebrew.addExpense({ id: 'mine', amountAgorot: 4500, category: 'groceries', spentOn: TODAY, logDurationMs: 2000 })
+
+    // Same language later the same day: kept.
+    const again = new LocalStoreRepo({ key: 'demo', storage, clock, seed: buildDemoSeed, lang: 'he' })
+    expect((await again.listExpenses({ from: TODAY, toExclusive: '2026-10-05' })).some((e) => e.id === 'mine')).toBe(true)
+
+    // English: a new seed with English names.
+    const english = new LocalStoreRepo({ key: 'demo', storage, clock, seed: buildDemoSeed, lang: 'en' })
+    expect((await english.getMembers()).map((m) => m.displayName)).toEqual(['Noa', 'Dan'])
+    expect((await english.listExpenses({ from: TODAY, toExclusive: '2026-10-05' })).some((e) => e.id === 'mine')).toBe(false)
+  })
+
+  it('replaces a demo saved before seeds were dated', async () => {
+    const storage = new MemoryStorage()
+    const old = buildDemoSeed(TODAY, clock())
+    delete old.seededOn
+    old.expenses = []
+    storage.setItem('demo', JSON.stringify(old))
+    const repo = new LocalStoreRepo({ key: 'demo', storage, clock, seed: buildDemoSeed })
+    expect((await repo.listExpenses({ from: '2026-09-10', toExclusive: '2026-10-10' })).length).toBeGreaterThan(20)
+  })
+
+  it('never resets a store without a seed (the real app on this device)', async () => {
+    const { storage, repo } = await withHousehold()
+    await repo.addExpense({ id: 'keep', amountAgorot: 4500, category: 'groceries', spentOn: TODAY, logDurationMs: 2000 })
+    const nextWeek = () => new Date('2026-10-11T07:00:00Z')
+    const later = new LocalStoreRepo({ key: 'test', storage, clock: nextWeek })
+    expect((await later.listExpenses({ from: '2026-09-10', toExclusive: '2026-10-10' })).map((e) => e.id)).toEqual(['keep'])
+  })
+
+  it('simulates a different partner expense each time, dated today, in order and then again', async () => {
+    const storage = new MemoryStorage()
+    const repo = new LocalStoreRepo({ key: 'demo', storage, clock, seed: buildDemoSeed })
+    const today = { from: TODAY, toExclusive: '2026-10-05' }
+    const added = async () => {
+      const ids = new Set((await repo.listExpenses(today)).map((e) => e.id))
+      await repo.simulatePartnerExpense()
+      return (await repo.listExpenses(today)).filter((e) => !ids.has(e.id))
+    }
+    for (let i = 0; i < PARTNER_EXPENSES.length + 1; i++) {
+      const [e, ...more] = await added()
+      expect(more).toEqual([])
+      const want = PARTNER_EXPENSES[i % PARTNER_EXPENSES.length]
+      expect([e.category, e.amountAgorot, e.memberId, e.spentOn]).toEqual([want.category, want.agorot, DEMO.danId, TODAY])
+    }
   })
 })

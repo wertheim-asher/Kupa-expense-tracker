@@ -125,6 +125,56 @@ describe('getSession on a refresh', () => {
   })
 })
 
+describe('creating or joining', () => {
+  const lookups = (from: { mock: { calls: unknown[][] } }) => from.mock.calls.filter(([table]) => table === 'members').length
+
+  it('uses the seat the server just gave: the reload after it does not ask again, and the next open knows it', async () => {
+    const client = fakeClient({
+      authSession: { data: { session: { user: { id: 'u1' } } }, error: null },
+      join: { data: { household_id: 'h1', member_id: 'm1', invite_code: 'ABC234' }, error: null },
+    })
+    const from = vi.spyOn(client, 'from')
+    const repo = new SupabaseRepo(client)
+    await repo.createHousehold({ displayName: 'Noa', budgetAgorot: 900000, cycleStartDay: 10 })
+    expect(await repo.getSession()).toEqual({ householdId: 'h1', memberId: 'm1' })
+    expect(lookups(from)).toBe(0)
+    expect(offlineCache.get()).toMatchObject({ session: { householdId: 'h1', memberId: 'm1' }, sessionUserId: 'u1' })
+  })
+
+  it('the same right after a new anonymous sign-in (joining on a new device)', async () => {
+    const answers: Parameters<typeof fakeClient>[0] = { join: { data: { household_id: 'h1', member_id: 'm2' }, error: null } }
+    const client = fakeClient(answers)
+    vi.spyOn(client.auth, 'signInAnonymously').mockImplementation(async () => {
+      answers.authSession = { data: { session: { user: { id: 'u2' } } }, error: null }
+      return { data: { user: { id: 'u2' }, session: null }, error: null } as never
+    })
+    const from = vi.spyOn(client, 'from')
+    const repo = new SupabaseRepo(client)
+    await repo.joinHousehold('ABC234', 'Dan')
+    expect(await repo.getSession()).toEqual({ householdId: 'h1', memberId: 'm2' })
+    expect(lookups(from)).toBe(0)
+    expect(offlineCache.get()).toMatchObject({ session: { householdId: 'h1', memberId: 'm2' }, sessionUserId: 'u2' })
+  })
+
+  it("without the login's id it asks the server, as before", async () => {
+    const answers: Parameters<typeof fakeClient>[0] = {
+      join: { data: { household_id: 'h1', member_id: 'm2' }, error: null },
+      memberRows: [{ id: 'm2', household_id: 'h1' }],
+    }
+    const client = fakeClient(answers)
+    // The fake sign-in answers without a user.
+    vi.spyOn(client.auth, 'signInAnonymously').mockImplementation(async () => {
+      answers.authSession = { data: { session: { user: { id: 'u2' } } }, error: null }
+      return { error: null } as never
+    })
+    const from = vi.spyOn(client, 'from')
+    const repo = new SupabaseRepo(client)
+    await repo.joinHousehold('ABC234', 'Dan')
+    expect(await repo.getSession()).toEqual({ householdId: 'h1', memberId: 'm2' })
+    expect(lookups(from)).toBe(1)
+  })
+})
+
 describe('opening with the login seen last time', () => {
   const login = { data: { session: { user: { id: 'u1' } } }, error: null }
 

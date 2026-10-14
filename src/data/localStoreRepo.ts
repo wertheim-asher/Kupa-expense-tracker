@@ -1,7 +1,9 @@
 // A Repo kept entirely in one localStorage entry. LocalRepo (the real app in the
-// fast lane) starts empty; DemoRepo starts from the demo seed. No network needed.
+// fast lane) starts empty; DemoRepo starts from the demo seed, and from a new seed each day (so the
+// demo always shows today's cycle) and after a language switch (so the names match). No network needed.
 
 import { todayInIsrael } from '../domain/cycle.ts'
+import { LANG, type Lang } from '../i18n/lang.ts'
 import type {
   CreateInput,
   CreateResult,
@@ -17,7 +19,8 @@ import type {
   NewExpense,
   Session,
 } from '../domain/types.ts'
-import { RepoError, type Repo } from './repo.ts'
+import { PARTNER_EXPENSES, PARTNER_ID_PREFIX } from './demoSeed.ts'
+import { RepoError, type CachedHome, type Repo } from './repo.ts'
 import { emptyStore, isStoreData, type StoreData } from './store.ts'
 import { inviteCode, uuid } from './uuid.ts'
 import { checkAmount, checkCycleDay, checkNewExpense, checkPatch, cleanName } from './validate.ts'
@@ -25,8 +28,10 @@ import { checkAmount, checkCycleDay, checkNewExpense, checkPatch, cleanName } fr
 export interface LocalStoreOptions {
   /** localStorage key. */
   key: string
-  /** Builds the starting data. Without it the store starts empty. */
-  seed?: (today: IsoDate, now: Date) => StoreData
+  /** Builds the starting data, again each new day. Without it the store starts empty. */
+  seed?: (today: IsoDate, now: Date, lang: Lang) => StoreData
+  /** The language a seed is built in (the app's language unless a test says otherwise). */
+  lang?: Lang
   clock?: () => Date
   storage?: Storage | null
 }
@@ -43,13 +48,15 @@ export class LocalStoreRepo implements Repo {
   private data: StoreData | null = null
   private readonly listeners = new Set<() => void>()
   private readonly key: string
-  private readonly seed?: (today: IsoDate, now: Date) => StoreData
+  private readonly seed?: (today: IsoDate, now: Date, lang: Lang) => StoreData
+  private readonly lang: Lang
   private readonly clock: () => Date
   private readonly storage: Storage | null
 
   constructor(options: LocalStoreOptions) {
     this.key = options.key
     this.seed = options.seed
+    this.lang = options.lang ?? LANG
     this.clock = options.clock ?? (() => new Date())
     this.storage = options.storage === undefined ? defaultStorage() : options.storage
   }
@@ -73,10 +80,12 @@ export class LocalStoreRepo implements Repo {
     } catch {
       stored = null
     }
-    if (isStoreData(stored)) {
+    // A seed from an earlier day, in the other language, or from before seeds were dated is replaced
+    // on the next launch; within a day, reloads keep every change.
+    if (isStoreData(stored) && (!this.seed || (stored.seededOn === this.today() && stored.seededLang === this.lang))) {
       this.data = stored
     } else {
-      this.data = this.seed ? this.seed(this.today(), this.clock()) : emptyStore()
+      this.data = this.seed ? this.seed(this.today(), this.clock(), this.lang) : emptyStore()
       try {
         this.write(this.data)
       } catch {
@@ -90,29 +99,34 @@ export class LocalStoreRepo implements Repo {
     this.storage?.setItem(this.key, JSON.stringify(next))
   }
 
-  /** What is in storage right now; another tab may have written since the cache was filled. */
-  private fresh(): StoreData {
+  /** What is in storage right now (another tab may have written since the cache was filled), or null. */
+  private stored(): StoreData | null {
     try {
       const raw = this.storage?.getItem(this.key)
       const stored: unknown = raw ? JSON.parse(raw) : null
-      if (isStoreData(stored)) {
-        this.data = stored
-        return stored
-      }
+      return isStoreData(stored) ? stored : null
     } catch {
-      // Fall back to the cache below.
+      return null
     }
-    return this.load()
   }
 
   /** Applies a change to a fresh copy, persists it, and only then makes it current. */
   private mutate<T>(change: (draft: StoreData) => T): T {
-    const draft = structuredClone(this.fresh())
-    const result = change(draft)
+    const stored = this.stored()
+    // Just read from storage, it is a new object already: no second copy (about 5 ms per write on a slow phone).
+    const draft = stored ?? structuredClone(this.load())
+    let result: T
     try {
-      this.write(draft)
+      result = change(draft)
+      try {
+        this.write(draft)
+      } catch (error) {
+        throw new RepoError('storage_failed', error instanceof Error ? error.message : undefined)
+      }
     } catch (error) {
-      throw new RepoError('storage_failed', error instanceof Error ? error.message : undefined)
+      // Not changed: the next read takes what storage holds, which may be newer than the cache.
+      if (stored) this.data = null
+      throw error
     }
     this.data = draft
     return result
@@ -181,7 +195,31 @@ export class LocalStoreRepo implements Repo {
 
   async listExpenses(range: { from: string; toExclusive: string }): Promise<Expense[]> {
     const d = this.load()
-    const { household } = this.requireSession(d)
+    return this.expensesIn(d, this.requireSession(d).household, range)
+  }
+
+  /**
+   * What the first load would give, read without waiting, so home is the first frame instead of a
+   * skeleton. The first load still runs and changes nothing on screen when it agrees.
+   */
+  peekCached(rangeFor: (household: Household) => { from: string; toExclusive: string }): CachedHome | null {
+    try {
+      const d = this.load()
+      if (!d.session || !d.household || d.household.id !== d.session.householdId) return null
+      const household = d.household
+      return {
+        session: { ...d.session },
+        household: { ...household },
+        members: d.members.filter((m) => m.householdId === household.id).map((m) => ({ ...m })),
+        expenses: this.expensesIn(d, household, rangeFor(household)),
+      }
+    } catch {
+      // Anything unexpected: open as before (skeleton, then the first load, which reports errors).
+      return null
+    }
+  }
+
+  private expensesIn(d: StoreData, household: Household, range: { from: string; toExclusive: string }): Expense[] {
     return d.expenses
       .filter(
         (e) =>
@@ -281,13 +319,16 @@ export class LocalStoreRepo implements Repo {
       const { session, household } = this.requireSession(d)
       const partner = d.members.find((m) => m.householdId === household.id && m.id !== session.memberId)
       if (!partner) throw new RepoError('not_found')
+      // The next one from the list, so each tap brings a different expense.
+      const n = d.expenses.filter((e) => e.id.startsWith(PARTNER_ID_PREFIX)).length
+      const next = PARTNER_EXPENSES[n % PARTNER_EXPENSES.length]
       const now = this.nowIso()
       d.expenses.push({
-        id: uuid(),
+        id: `${PARTNER_ID_PREFIX}${n + 1}`,
         householdId: household.id,
         memberId: partner.id,
-        amountAgorot: 8400,
-        category: 'groceries',
+        amountAgorot: next.agorot,
+        category: next.category,
         spentOn: this.today(),
         logDurationMs: null,
         createdAt: now,

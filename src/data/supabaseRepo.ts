@@ -160,12 +160,22 @@ export class SupabaseRepo implements Repo {
     return this.session
   }
 
-  /** Anonymous sign-in happens only when someone creates or joins, never just for visiting. */
-  private async ensureSignedIn(): Promise<void> {
+  /** Anonymous sign-in happens only when someone creates or joins, never just for visiting. The login's id, if known. */
+  private async ensureSignedIn(): Promise<string | null> {
     const { data } = await this.sb.auth.getSession()
-    if (data.session) return
-    const { error } = await this.sb.auth.signInAnonymously()
+    if (data.session) return data.session.user.id
+    const { data: signedIn, error } = await this.sb.auth.signInAnonymously()
     if (error) throw toRepoError(error)
+    return signedIn?.user?.id ?? null
+  }
+
+  /**
+   * The seat this login just created or took back: the server's answer says which member it is, so the
+   * reload that follows skips asking again (one round trip less), and the next open can use it at once.
+   */
+  private tookSeat(session: Session, userId: string | null): void {
+    this.setSession(session, userId)
+    if (userId) offlineCache.update({ session, sessionUserId: userId })
   }
 
   private setSession(session: Session | null, userId: string | null = null): void {
@@ -419,7 +429,7 @@ export class SupabaseRepo implements Repo {
     const displayName = cleanName(input.displayName)
     checkAmount(input.budgetAgorot)
     checkCycleDay(input.cycleStartDay)
-    await this.ensureSignedIn()
+    const userId = await this.ensureSignedIn()
     const { data, error } = await this.sb.rpc('create_household', {
       p_display_name: displayName,
       p_budget_agorot: input.budgetAgorot,
@@ -427,14 +437,14 @@ export class SupabaseRepo implements Repo {
     })
     if (error) throw toRepoError(error)
     const result = data as { household_id: string; member_id: string; invite_code: string }
-    this.setSession({ householdId: result.household_id, memberId: result.member_id })
+    this.tookSeat({ householdId: result.household_id, memberId: result.member_id }, userId)
     return { householdId: result.household_id, memberId: result.member_id, inviteCode: result.invite_code }
   }
 
   async joinHousehold(code: string, displayName: string, personalCode?: string): Promise<JoinResult> {
     // Taking a seat back needs no name: the seat keeps its own.
     const name = personalCode ? displayName.trim() : cleanName(displayName)
-    await this.ensureSignedIn()
+    const userId = await this.ensureSignedIn()
     const { data, error } = await this.sb.rpc('join_household', {
       p_code: code,
       p_display_name: name,
@@ -444,7 +454,7 @@ export class SupabaseRepo implements Repo {
     // A rejoin changed this seat's personal code: never show the old one from the cache.
     offlineCache.update({ personalCode: undefined })
     const result = data as { household_id: string; member_id: string }
-    this.setSession({ householdId: result.household_id, memberId: result.member_id })
+    this.tookSeat({ householdId: result.household_id, memberId: result.member_id }, userId)
     return { householdId: result.household_id, memberId: result.member_id }
   }
 
