@@ -32,7 +32,7 @@ Other scripts: `npm test` (unit and flow tests, always on-device), `npm run test
 
 ### Checks in a phone-sized browser (`scripts/checks/`)
 
-Four Playwright scripts for what the unit tests cannot see; each file's header says how to build, serve and run it. `launch-cache.cjs` (opening on cached data: seat taken back, early save, new cycle, offline) and `new-visitor.cjs` (English first screens, join, the way back, the switch to Hebrew, the manifest) run against a fake Supabase; `demo-day.cjs` (the demo on Oct 18: cycles, history, the partner button) and `taps.cjs` (tap-to-paint times on a 4x slower CPU) use the demo.
+Six Playwright scripts for what the unit tests cannot see; each file's header says how to build, serve and run it. `launch-cache.cjs` (opening on cached data: seat taken back, early save, new cycle, offline), `new-visitor.cjs` (English first screens, join, the way back, the switch to Hebrew, the manifest), `first-visit.cjs` (time from "Create" to the invite screen on slow 3G or 4G, two builds compared) and `stale-deploy.cjs` (a page left open across a deploy can still create a budget) run against a fake Supabase; `demo-day.cjs` (the demo on Oct 18: cycles, history, the partner button) and `taps.cjs` (tap-to-paint times on a 4x slower CPU) use the demo.
 
 ### Phone smoke test
 
