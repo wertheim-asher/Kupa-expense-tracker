@@ -20,7 +20,7 @@ import type {
   Session,
 } from '../domain/types.ts'
 import { PARTNER_EXPENSES, PARTNER_ID_PREFIX } from './demoSeed.ts'
-import { RepoError, type Repo } from './repo.ts'
+import { RepoError, type CachedHome, type Repo } from './repo.ts'
 import { emptyStore, isStoreData, type StoreData } from './store.ts'
 import { inviteCode, uuid } from './uuid.ts'
 import { checkAmount, checkCycleDay, checkNewExpense, checkPatch, cleanName } from './validate.ts'
@@ -190,7 +190,31 @@ export class LocalStoreRepo implements Repo {
 
   async listExpenses(range: { from: string; toExclusive: string }): Promise<Expense[]> {
     const d = this.load()
-    const { household } = this.requireSession(d)
+    return this.expensesIn(d, this.requireSession(d).household, range)
+  }
+
+  /**
+   * What the first load would give, read without waiting, so home is the first frame instead of a
+   * skeleton. The first load still runs and changes nothing on screen when it agrees.
+   */
+  peekCached(rangeFor: (household: Household) => { from: string; toExclusive: string }): CachedHome | null {
+    try {
+      const d = this.load()
+      if (!d.session || !d.household || d.household.id !== d.session.householdId) return null
+      const household = d.household
+      return {
+        session: { ...d.session },
+        household: { ...household },
+        members: d.members.filter((m) => m.householdId === household.id).map((m) => ({ ...m })),
+        expenses: this.expensesIn(d, household, rangeFor(household)),
+      }
+    } catch {
+      // Anything unexpected: open as before (skeleton, then the first load, which reports errors).
+      return null
+    }
+  }
+
+  private expensesIn(d: StoreData, household: Household, range: { from: string; toExclusive: string }): Expense[] {
     return d.expenses
       .filter(
         (e) =>

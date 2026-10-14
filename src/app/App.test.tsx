@@ -270,6 +270,17 @@ describe('core flow (LocalRepo)', () => {
   })
 })
 
+describe('opening the demo', () => {
+  it('paints home in the first frame, with no loading skeleton', async () => {
+    await repoFor('demo').resetDevice()
+    render(<App initialMode="demo" />)
+    // No waiting: the data is on this device, so home is there on the first render.
+    expect(screen.getByRole('button', { name: 'הוספת הוצאה' })).toBeInTheDocument()
+    expect(bigNumber()).toMatch(/במחזור הזה|חריגה/)
+    expect(screen.getAllByRole('link').some((a) => a.getAttribute('href')?.startsWith('/expense/'))).toBe(true)
+  })
+})
+
 describe('history (earlier cycles)', () => {
   it('shows the previous cycle, edits an expense there, and comes back to the current one', async () => {
     await repoFor('demo').resetDevice()

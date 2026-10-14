@@ -193,6 +193,38 @@ describe('LocalStoreRepo (LocalRepo)', () => {
     expect(await repo.getSession()).toBeNull()
   })
 
+  it('peekCached gives at once what the first load would (null without a budget, or on any error)', async () => {
+    const { repo, storage } = setup()
+    const range = { from: '2026-09-10', toExclusive: '2026-10-10' }
+    expect(repo.peekCached(() => range)).toBeNull()
+    await repo.createHousehold({ displayName: 'נועה', budgetAgorot: 900_000, cycleStartDay: 10 })
+    await repo.addExpense({ id: 'e1', amountAgorot: 4500, category: 'groceries', spentOn: '2026-10-02', logDurationMs: 3000 })
+    await repo.addExpense({ id: 'e2', amountAgorot: 1200, category: 'fun', spentOn: '2026-09-01', logDurationMs: 3000 })
+    await repo.addExpense({ id: 'e3', amountAgorot: 99, category: 'fun', spentOn: '2026-10-03', logDurationMs: null })
+    await repo.deleteExpense('e3')
+
+    // A new repo on the same storage, as on the next launch.
+    const again = new LocalStoreRepo({ key: 'test', storage, clock })
+    let askedFor = 0
+    const home = again.peekCached((h) => {
+      askedFor = h.cycleStartDay
+      return range
+    })
+    expect(askedFor).toBe(10)
+    expect(home).toEqual({
+      session: await again.getSession(),
+      household: await again.getHousehold(),
+      members: await again.getMembers(),
+      expenses: await again.listExpenses(range),
+    })
+    expect(home?.expenses.map((e) => e.id)).toEqual(['e1'])
+    expect(
+      again.peekCached(() => {
+        throw new Error('bad range')
+      }),
+    ).toBeNull()
+  })
+
   it('joining is not available locally', async () => {
     const { repo } = setup()
     await expectCode(repo.joinHousehold('ABCDEF', 'דן'), 'unsupported')
