@@ -1,10 +1,10 @@
-# Handoff: Kupa (קופה), PM course MVP. Updated Wed 2026-10-14
+# Handoff: Kupa (קופה), PM course MVP. Updated Wed 2026-10-14, 23:10 Israel
 Goal: shared-budget PWA for couples: log an expense in 3 taps, always see "left this cycle". **Presentation: Sun Oct 18, 2026.** Read CLAUDE.md, SPEC.md (FAST LANE first) and BUILD_LOG.md (full history) before working. Asher's chat style: every message starts with "/BL:", few words, plain English (B2), no em dashes.
 
 ## Where things are
-- **Live:** https://kupa-expense-tracker.netlify.app from `main` (bed5ebb). The app code on `main` is the Oct 3 version (PR #4); after it only notes (PR #5) and the keep-alive workflow. The live app is still Hebrew by default with the old demo.
-- **Branch `claude/epic-galileo-bn5lcb`:** all of round 6, pushed, PR open (see below), not merged. Commits on top of `main`: caffd05 (demo), 50da40b (log), fca5673 (English default), 85fcff8 (launch speed), 9b6f70e (handoff), then the speed audit from Asher's PC: 3085f9c (Supabase code loads when the create/join form opens), 7bad9a3 (reload once after a deploy), 832325b (no seat lookup after create/join), 491c268 (no second copy per on-device write), 5e8094b (two checks, notes).
-- **Netlify credits:** the cycle reset on Oct 13; no production deploy since, so about 0 of 300 used (check the Netlify dashboard). Each production deploy costs 15. Plan: one PR (deploy previews are free), one merge = 15 credits. Commits that change only notes, `pilot/` or `presentation/` skip the production build; `[skip netlify]` in a commit message skips any build.
+- **Live:** https://kupa-expense-tracker.netlify.app from `main` (e0ce8cc, PR #6 merged Oct 14 with Asher's OK after his preview test). English by default, the new demo, the speed audit. Checked on the live site: the demo on Oct 18 (all cycles, 3 partner taps, reload, no page errors), the date ring, the manifest (Kupa, English).
+- **Branch `claude/epic-galileo-bn5lcb`:** merged; nothing open. New work: a new branch and PR.
+- **Netlify credits:** the cycle reset on Oct 13; no production deploy since, then one production deploy for PR #6 (15 of 300, check the Netlify dashboard). Each production deploy costs 15. Plan: one PR (deploy previews are free), one merge = 15 credits. Commits that change only notes, `pilot/` or `presentation/` skip the production build; `[skip netlify]` in a commit message skips any build.
 - **Supabase** (project xblsobdgqmwvnbdhowiq): migrations 0001, 0002, 0003 applied. A daily GitHub Action (`supabase-keepalive.yml`, 05:17 UTC, secret `SUPABASE_ANON_KEY`) keeps the free project awake; runs on Oct 12 and 13 were green.
 - **Pilot:** postponed by Asher on Oct 14 (tight schedule), a future step. `pilot/` is unchanged.
 - **Reminders:** the Oct 15 one is off. The Oct 17 17:00 UTC (20:00 Israel) pre-presentation checklist still fires, into the old cloud session; it pushes a notification to Asher's phone.
@@ -28,8 +28,8 @@ Goal: shared-budget PWA for couples: log an expense in 3 taps, always see "left 
 ## Open work, in order
 1. ~~Finish the speed audit~~ done Oct 14 (see BUILD_LOG decisions of Oct 14). Measured, no gain (do not redo): inline SW registration, removing content-visibility, fewer rows at launch, route splitting, compile hints on all chunks. Left out on purpose: tap rendering changes (core flow, under 200 ms already), caching Israel's time offset in the demo seed (about 18 ms once a day).
 2. ~~Adversarial review~~ done Oct 14: no blocking finding.
-3. **PR open** from the branch: wait for the green "Tests" check, Asher tests the deploy preview: English first, the switch to Hebrew, the demo (history, partner button), and creating a budget.
-4. **Merge only with Asher's OK**, ideally by Oct 17 (one production deploy, 15 credits). Then update this file and BUILD_LOG (notes only, no build).
+3. ~~PR #6~~ Asher tested the preview on his Android ("everything looks great"); his one glitch (the chosen date's ring clipped at the top) was fixed on the PR; Tests green.
+4. ~~Merge~~ done Oct 14 (merge commit e0ce8cc), live checked.
 5. **Oct 17 checklist:** keep-alive runs green; on the presenting phone open the demo (it is fresh each day, so no reset needed), install it to the home screen; QR codes from `presentation/` on a slide.
 
 ## Key decisions (why)
