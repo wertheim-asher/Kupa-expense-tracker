@@ -6,8 +6,17 @@ afterEach(() => {
 })
 
 describe('language', () => {
-  it('is English, left to right, by default', async () => {
+  it('is Hebrew, right to left, by default, and the app is called Kupa', async () => {
     localStorage.removeItem('kupa.lang')
+    const i18n = await import('./index.ts')
+    expect([i18n.LANG, i18n.DIR, i18n.LOCALE]).toEqual(['he', 'rtl', 'he-IL'])
+    expect(i18n.t('home.lastDay')).toBe('יום אחרון במחזור')
+    expect(i18n.categoryName('transport')).toBe('רכב ותחבורה')
+    expect(i18n.appName()).toBe('Kupa')
+  })
+
+  it('switches everything to English, left to right, when chosen on this device', async () => {
+    localStorage.setItem('kupa.lang', 'en')
     const i18n = await import('./index.ts')
     const { formatMoney } = await import('../domain/money.ts')
     expect([i18n.LANG, i18n.DIR, i18n.LOCALE]).toEqual(['en', 'ltr', 'en-IL'])
@@ -18,20 +27,11 @@ describe('language', () => {
     expect(formatMoney(4500)).toBe('₪45')
   })
 
-  it('switches everything to Hebrew, right to left, when chosen on this device', async () => {
-    localStorage.setItem('kupa.lang', 'he')
-    const i18n = await import('./index.ts')
-    expect([i18n.LANG, i18n.DIR, i18n.LOCALE]).toEqual(['he', 'rtl', 'he-IL'])
-    expect(i18n.t('home.lastDay')).toBe('יום אחרון במחזור')
-    expect(i18n.categoryName('transport')).toBe('רכב ותחבורה')
-    expect(i18n.appName()).toBe('קופה')
-  })
-
-  it('stays English for a stored English choice or anything unknown', async () => {
-    for (const value of ['en', 'fr', '']) {
+  it('stays Hebrew for a stored Hebrew choice or anything unknown', async () => {
+    for (const value of ['he', 'fr', '']) {
       localStorage.setItem('kupa.lang', value)
       vi.resetModules()
-      expect((await import('./lang.ts')).LANG).toBe('en')
+      expect((await import('./lang.ts')).LANG).toBe('he')
     }
   })
 })

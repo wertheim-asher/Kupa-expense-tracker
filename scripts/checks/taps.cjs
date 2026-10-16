@@ -13,7 +13,7 @@ const RATE = Number(process.env.RATE || 4)
 async function session(browser) {
   const ctx = await browser.newContext({ viewport: { width: 360, height: 740 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, locale: 'he-IL', serviceWorkers: 'block' })
   await ctx.addInitScript(() => {
-    // The script finds buttons by their Hebrew names (English is the default since 2026-10-14).
+    // The script finds buttons by their Hebrew names (Hebrew is the default; kept so the check never depends on it).
     localStorage.setItem('kupa.lang', 'he')
     window.__events = []
     new PerformanceObserver((list) => {

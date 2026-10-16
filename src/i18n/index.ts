@@ -75,5 +75,5 @@ export function categoryName(id: CategoryId): string {
 }
 
 /** The app's name and owner in the current language (config.ts keeps both). */
-export const appName = (): string => (LANG === 'en' ? APP.nameEn : APP.name)
+export const appName = (): string => APP.name
 export const ownerName = (): string => (LANG === 'en' ? APP.ownerEn : APP.owner)

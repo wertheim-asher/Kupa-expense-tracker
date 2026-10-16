@@ -13,7 +13,7 @@ const DAY = process.env.DAY || '2026-10-18T09:00:00Z' // 12:00 in Israel
   const browser = await chromium.launch()
   const ctx = await browser.newContext({ viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'he-IL', serviceWorkers: 'block' })
   await ctx.clock.install({ time: new Date(DAY) })
-  // Buttons are found by their Hebrew names (English is the default since 2026-10-14).
+  // Buttons are found by their Hebrew names (Hebrew is the default; kept so the check never depends on it).
   await ctx.addInitScript(() => localStorage.setItem('kupa.lang', 'he'))
   const page = await ctx.newPage()
   const errors = []

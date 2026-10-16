@@ -81,12 +81,12 @@ export default defineConfig(({ mode }) => ({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       manifest: {
-        // English is the default language, so the installed app is named in English too.
-        name: APP.nameEn,
-        short_name: APP.nameEn,
-        description: APP.descriptionEn,
-        lang: 'en',
-        dir: 'ltr',
+        // Hebrew is the default language; the name is Kupa in both languages.
+        name: APP.name,
+        short_name: APP.name,
+        description: APP.description,
+        lang: 'he',
+        dir: 'rtl',
         start_url: '/',
         scope: '/',
         display: 'standalone',
