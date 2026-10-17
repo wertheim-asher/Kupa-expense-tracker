@@ -62,7 +62,7 @@ async function open(browser, { latency = 300, seatGone = false, offline = false,
     localStorage.clear()
     localStorage.setItem('kupa.auth', JSON.stringify(auth))
     localStorage.setItem('kupa.cache.v1', JSON.stringify(c))
-    // The checks read Hebrew text (English is the default since 2026-10-14).
+    // The checks read Hebrew text (Hebrew is the default; kept so the check never depends on it).
     localStorage.setItem('kupa.lang', 'he')
   }, { c: cache(cacheOpts), auth, offline })
   const log = []

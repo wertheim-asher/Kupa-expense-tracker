@@ -2,14 +2,12 @@
 // Imported by vite.config.ts too, so keep this file free of browser APIs.
 
 export const APP = {
-  /** Display name (Hebrew UI) and its English form. Change them here only. */
-  name: 'קופה',
-  nameEn: 'Kupa',
+  /** The app's name, in Latin letters in both languages (one brand; Israelis read it as קופה). Change it here only. */
+  name: 'Kupa',
   /** Latin slug, used in file names and storage keys. */
   slug: 'kupa',
   version: '0.1.0',
   description: 'תמיד יודעים כמה נשאר עד החיוב הבא',
-  descriptionEn: "Always know what's left until the next card bill",
   owner: 'אשר וורטהיים',
   ownerEn: 'Asher Wertheim',
   copyrightYear: 2026,
