@@ -1,10 +1,10 @@
-# Handoff: Kupa (קופה), PM course MVP. Updated Wed 2026-10-14, 23:10 Israel
+# Handoff: Kupa (קופה), PM course MVP. Updated Sat 2026-10-17
 Goal: shared-budget PWA for couples: log an expense in 3 taps, always see "left this cycle". **Presentation: Sun Oct 18, 2026.** Read CLAUDE.md, SPEC.md (FAST LANE first) and BUILD_LOG.md (full history) before working. Asher's chat style: every message starts with "/BL:", few words, plain English (B2), no em dashes.
 
 ## Where things are
-- **Live:** https://kupa-expense-tracker.netlify.app from `main` (e0ce8cc, PR #6 merged Oct 14 with Asher's OK after his preview test). English by default, the new demo, the speed audit. Checked on the live site: the demo on Oct 18 (all cycles, 3 partner taps, reload, no page errors), the date ring, the manifest (Kupa, English).
-- **Branch `claude/epic-galileo-bn5lcb`:** merged; nothing open. New work: a new branch and PR.
-- **Netlify credits:** the cycle reset on Oct 13; no production deploy since, then one production deploy for PR #6 (15 of 300, check the Netlify dashboard). Each production deploy costs 15. Plan: one PR (deploy previews are free), one merge = 15 credits. Commits that change only notes, `pilot/` or `presentation/` skip the production build; `[skip netlify]` in a commit message skips any build.
+- **Live:** https://kupa-expense-tracker.netlify.app from `main` (b6ae0e5). PR #6 (Oct 14: new demo, speed audit) and PR #7 (Oct 17: **Hebrew by default again, the name is Kupa in both languages**, English in Settings), both merged with Asher's OK after his preview tests. Checked live after PR #7: title and manifest Kupa, Hebrew, right to left; the demo on Oct 18 (all cycles, 3 partner taps, reload, no page errors).
+- **Branches:** nothing open. New work: a new branch and PR.
+- **Netlify credits:** the cycle reset on Oct 13; no production deploy since, then two production deploys (PR #6 and PR #7: about 30 of 300, check the Netlify dashboard). Each production deploy costs 15. Plan: one PR (deploy previews are free), one merge = 15 credits. Commits that change only notes, `pilot/` or `presentation/` skip the production build; `[skip netlify]` in a commit message skips any build.
 - **Supabase** (project xblsobdgqmwvnbdhowiq): migrations 0001, 0002, 0003 applied. A daily GitHub Action (`supabase-keepalive.yml`, 05:17 UTC, secret `SUPABASE_ANON_KEY`) keeps the free project awake; runs on Oct 12 and 13 were green.
 - **Pilot:** postponed by Asher on Oct 14 (tight schedule), a future step. `pilot/` is unchanged.
 - **Reminders:** the Oct 15 one is off. The Oct 17 17:00 UTC (20:00 Israel) pre-presentation checklist still fires, into the old cloud session; it pushes a notification to Asher's phone.
@@ -13,7 +13,7 @@ Goal: shared-budget PWA for couples: log an expense in 3 taps, always see "left 
 ## What is on the branch (round 6)
 1. **Demo for the presentation.** Starts from a new seed each day and after a language switch (reloads the same day keep changes). The current cycle (on Oct 18: Oct 10 to Nov 9, about 8% ahead of pace) plus 9 earlier cycles back to Jan 10 to Feb 9, with varied totals (Aug and Mar to Apr over budget; no amount at a category limit or repeated). Root cause of Asher's report: the stored demo was seeded once and never refreshed.
 2. **"Simulate partner expense":** each tap adds the next of 20 different expenses by Dan, dated today (first: ₪84 groceries), and home switches to the current cycle first.
-3. **English by default**, Hebrew in Settings (English listed first). index.html starts `lang="en" dir="ltr"`; the manifest is "Kupa" in English; iOS's suggested home-screen name follows the language. A stored Hebrew choice is kept.
+3. **Language:** English by default from Oct 14 to 17; since PR #7 (Oct 17) **Hebrew by default** again, English in Settings, and the app is called Kupa (Latin) in both languages. A stored choice is kept. The deck is in English (for readers abroad) with Hebrew screenshots and English callouts.
 4. **Launch speed** (measured, CPU 4x with the service worker): demo and on-device open straight on home, no skeleton (demo 816 to 654 ms); V8 compile hint on the entry script (shared-budget home 651 to 579 ms; Chrome only, Safari ignores it).
 5. **`scripts/checks/`:** 6 phone-browser checks (see README "Checks in a phone-sized browser").
 6. **Speed audit, finished Oct 14 (Asher's PC).** First visit, tap Create to the invite screen (CPU 4x): slow 3G 3.94 to 1.81 s, 4G 1.51 to 0.79 s (code loads while the form is filled in; one round trip less). Demo save 128 to 112 ms. A page left open across a deploy reloads once instead of failing to create or join. Taps: measured, no change (all under 200 ms at CPU 4x).
@@ -29,7 +29,7 @@ Goal: shared-budget PWA for couples: log an expense in 3 taps, always see "left 
 1. ~~Finish the speed audit~~ done Oct 14 (see BUILD_LOG decisions of Oct 14). Measured, no gain (do not redo): inline SW registration, removing content-visibility, fewer rows at launch, route splitting, compile hints on all chunks. Left out on purpose: tap rendering changes (core flow, under 200 ms already), caching Israel's time offset in the demo seed (about 18 ms once a day).
 2. ~~Adversarial review~~ done Oct 14: no blocking finding.
 3. ~~PR #6~~ Asher tested the preview on his Android ("everything looks great"); his one glitch (the chosen date's ring clipped at the top) was fixed on the PR; Tests green.
-4. ~~Merge~~ done Oct 14 (merge commit e0ce8cc), live checked.
+4. ~~Merge~~ done Oct 14 (merge commit e0ce8cc), live checked. Then PR #7 (Hebrew default, Kupa name) merged Oct 17 (b6ae0e5), live checked.
 5. **Oct 17 checklist:** keep-alive runs green; on the presenting phone open the demo (it is fresh each day, so no reset needed), install it to the home screen; QR codes from `presentation/` on a slide.
 
 ## Key decisions (why)
