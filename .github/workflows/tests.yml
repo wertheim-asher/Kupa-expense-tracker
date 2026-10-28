@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # ubuntu-latest moved to Ubuntu 26 on 2026-10-19; playwright --with-deps fails there
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
