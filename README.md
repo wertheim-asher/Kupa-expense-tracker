@@ -3,7 +3,7 @@
 A shared budget app for couples, built as a Product Management course MVP. Both partners log expenses by hand in seconds and always see one number: how much is left until the next credit card billing cycle.
 
 - **Live:** https://kupa-expense-tracker.netlify.app
-- **Code:** https://github.com/wertheim-asher/Kupa-expense-tracker (private)
+- **Code:** https://github.com/wertheim-asher/Kupa
 - **Demo:** add `?demo=1` to the URL (or tap "צפייה בדמו" on the welcome screen). `?demo=0` or "יציאה מהדמו" in settings returns to the real app. The demo always runs on the phone only, so it works without internet.
 
 Partner sync (Supabase) is live since October 2, 2026. Hebrew is the default and English is in Settings (English was the default from October 14 to 16, 2026); the app is called Kupa in both languages. Dark mode is in too (Settings, and the phone's dark setting). See [SPEC.md](SPEC.md) for the plan, [BUILD_LOG.md](BUILD_LOG.md) for every decision, problem and cut, and [pilot/](pilot/README.md) for the pilot with real couples.
