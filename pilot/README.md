@@ -1,4 +1,6 @@
-# Kupa pilot (October 4 to 16, 2026)
+# Kupa pilot plan (not run)
+
+**Status:** planned for October 4 to 16, 2026, then postponed on October 14. The pilot never ran, so there are no pilot results. This folder is the kit for running it later.
 
 Goal: real numbers for the presentation on October 18. A few couples use Kupa for about 10 days,
 then one query gives the numbers for the three assumptions in SPEC.md.

@@ -1,11 +1,11 @@
--- Kupa pilot: the numbers for the presentation, in one table.
+-- Kupa pilot (planned, not run yet): the numbers for the presentation, in one table.
 -- Run it in the Supabase dashboard: SQL Editor > New query > paste all of this > Run.
 -- Before running, set the two values in `params` below.
 -- It reads only usage: counts and times. No amounts and no names leave this query.
 
 with params as (
   select
-    date '2026-10-03' as pilot_start,      -- the day the pilot invites went out
+    date '2026-10-03' as pilot_start,      -- the day the pilot invites go out (set before running)
     array['TRRYBE']::text[] as also_include -- invite codes of budgets created earlier that count too (yours)
 ),
 -- Budgets in the pilot: created since the start, or listed above. Test data ("rls-test-…") is left out.
